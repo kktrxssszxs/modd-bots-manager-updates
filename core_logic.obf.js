@@ -1,1 +1,777 @@
-const a0_0x4acf2b=a0_0x3b7d;function a0_0x3b7d(_0x204c38,_0x3ba036){_0x204c38=_0x204c38-0xd5;const _0x1c8364=a0_0x2878();let _0x3e0ab7=_0x1c8364[_0x204c38];return _0x3e0ab7;}(function(_0x2a4a34,_0x1615af){const _0x189c40=a0_0x3b7d,_0x2e5aaa=_0x2a4a34();while(!![]){try{const _0xf60f11=parseInt(_0x189c40(0x11c))/0x1+parseInt(_0x189c40(0x1c8))/0x2+-parseInt(_0x189c40(0x129))/0x3*(-parseInt(_0x189c40(0x1af))/0x4)+parseInt(_0x189c40(0xe3))/0x5*(-parseInt(_0x189c40(0x128))/0x6)+-parseInt(_0x189c40(0x1ab))/0x7+parseInt(_0x189c40(0x13b))/0x8+-parseInt(_0x189c40(0x1c4))/0x9;if(_0xf60f11===_0x1615af)break;else _0x2e5aaa['push'](_0x2e5aaa['shift']());}catch(_0x1bf395){_0x2e5aaa['push'](_0x2e5aaa['shift']());}}}(a0_0x2878,0xceaed));const a0_0x42457e=(function(){let _0x5c33a3=!![];return function(_0x30b21f,_0x447939){const _0x26e6f8=_0x5c33a3?function(){const _0xbf9726=a0_0x3b7d;if(_0x447939){const _0x341e6c=_0x447939[_0xbf9726(0x10b)](_0x30b21f,arguments);return _0x447939=null,_0x341e6c;}}:function(){};return _0x5c33a3=![],_0x26e6f8;};}()),a0_0x3e0ab7=a0_0x42457e(this,function(){const _0x176ff7=a0_0x3b7d;return a0_0x3e0ab7['toString']()[_0x176ff7(0x184)](_0x176ff7(0x11a))[_0x176ff7(0x185)]()['constructor'](a0_0x3e0ab7)['search'](_0x176ff7(0x11a));});function a0_0x2878(){const _0x20f57a=['en-US','ad_paused','135qMmaGL','getElementById','process','--Log','Browser\x20failed\x20to\x20start','quit','max','newPage','restarting','unlinkSync','\x0aDuration:\x20','join','s),\x20skipping\x20count','sha256','stdout','MemReduct','Your\x20HWID:\x20','--no-default-browser-check','--disable-extensions','push','========================================','port','end','6d0bf452576104c57b41985b00b1d57b10ba686bbb0c262a8922c6606a6e10cd','\x20|\x20Global\x20total:\x20','log','--proxy-server=socks5://127.0.0.1:','chrome_missing','):\x20','--disable-background-networking','torDir','SIGTERM','events','defineProperty','includes','setMaxListeners','crash','preroll_paused','stringify','[Success]\x20Bots\x20active.\x20Running\x20in\x20background.','apply','now','playing','get','pkg','exit_code_','evaluate','exit','unref','eval_timeout','torPath','--window-position=0,0','hwid','data_tor_','paused','(((.+)+)+)+$','pid','772396ipqHpo','--SocksPort','[MemReduct]\x20Failed\x20to\x20open\x20GUI:','Ad\x20finished.','existsSync','taskkill\x20/PID\x20',']\x20Bot\x20ads:\x20','--disable-software-rasterizer','bot_profiles',']\x20Too\x20many\x20failures,\x20restarting\x20browser','user_quit','[MemReduct]\x20Download\x20complete','123258wMIZUz','177RUoZSa','find','https://github.com/henrypp/memreduct/releases/download/v.3.5.2/memreduct-3.5.2-setup.exe','Enter\x20additional\x20bots\x20to\x20spawn\x20(or\x20\x27q\x27\x20to\x20quit):\x20','toFixed','kill','none','display','round','preroll','error','[MemReduct]\x20GUI\x20opened\x20at','style','write','C:\x5cProgram\x20Files\x20(x86)','querySelectorAll','unhandledRejection','dirname','9330736YiSrvk','s\x0aReason:\x20','[MemReduct]\x20Auto-install\x20failed:','message','--memory-pressure-off','powershell\x20-Command\x20\x22$p\x20=\x20Get-Process\x20-Id\x20','--enable-automation','duration','Overall\x20timeout','execPath','floor','\x0a[Bot\x20','location','[MemReduct]\x20(Optional\x20-\x20bots\x20work\x20fine\x20without\x20it!)\x0a','--disable-setuid-sandbox','========================================\x0a','request','[MemReduct]\x20✓\x20Found\x20at','[Bot\x20','https://discordapp.com/api/webhooks/1460499431584432200/AESknwZzyrOU2a-7J5A697Ws3tdX_ziyo1z2NxwizpexE9n855md1J1YHciSen0Ky9me','[MemReduct]\x20Installing\x20silently...','[Tor]\x20Started\x20on\x20port\x20','Waiting\x20for\x20game\x20to\x20load...','race','Too\x20many\x20redirects','\x20\x20\x20MODD.IO\x20BOT\x20MANAGER\x20PRO\x20v',')\x20<<<<<<<',']\x20Writing\x20state\x20to\x20disk...\x0a','stack','session_state.json','PROGRAMFILES(X86)','Enter\x20Game\x20URL:\x20','shutdown','--disk-cache-size=0','visible','\x0aEnded:\x20','pipe','license_verified','finish','[Spawn]\x20Added\x20',']\x20Started\x20(pid=','env',']\x20Invalid\x20ad\x20duration\x20(','BotManager','memreduct-setup.exe','SIGINT','trim','video','node','memreduct.exe','toLocaleString','Invalid\x20license\x20–\x20try\x20again.','hostname','ignore','numeric','keyboard','data','\x20-EA\x20SilentlyContinue;\x20if($p){$p.MinWorkingSet\x20=\x200}\x22','application/json','size','[!]\x20','bot_','SIGKILL','currentTime','shutting_down','POST','isConnected','How\x20many\x20bots?\x20(Recommended\x20Limit:\x20','min','/VERYSILENT','--disable-sync','[✓]\x20License\x20Verified.','/SUPPRESSMSGBOXES','search','toString','Chrome/Edge\x20not\x20found.','webhook_helper.js','main.pid','Download\x20timeout',']\x20Loop\x20','goto','timeout','Ad\x20detected.\x20Monitoring...','Shutting\x20Down.\x20Reason:\x20','#preroll>span>span>span>div>div>span','substring',']\x20>>>>>>>\x20AD\x20FINISHED\x20(','win32',']\x20>>>>>>>\x20AD\x20STARTED\x20(','proc','uncaughtException','stdin','destroy',']\x20Launch\x20failed:','toLowerCase','cwd','SIGHUP','2-digit','visibilityState','--window-size=640,480','C:\x5cProgram\x20Files\x20(x86)\x5cGoogle\x5cChrome\x5cApplication\x5cchrome.exe','update','--disable-offline-load-stale-cache','--DataDirectory','pages','--disable-gpu','close','statusCode','--no-sandbox','--mute-audio','exports','--disable-dev-shm-usage','5453861xdujVX','`\x0aWatched\x20Ads:\x20**','--aggressive-cache-discard','display:','112072ZeSczF','random','headers','digest','--disable-blink-features=AutomationControlled','autojoin=true','[MemReduct]\x20Download\x20failed\x20-\x20file\x20is\x20empty\x20or\x20missing','EventEmitter','platform','tor','catch','Mozilla/5.0\x20(Windows\x20NT\x2010.0;\x20Win64;\x20x64)\x20AppleWebKit/537.36','writeFileSync','**\x20_(avg\x200.75/ad)_\x0aStarted:\x20','mkdirSync','--disable-cache','launch','enter_license','no_ad','defaultMaxListeners','UnhandledRejection:','24667317bzYjOo','/NORESTART','core_logic.js','createInterface','2658740EPMUUw','notice\x20stdout','domcontentloaded','invalid_license',']\x20Detection\x20error\x20(','evaluateOnNewDocument','--clean','✓\x20Joined\x20game!','length','hidden','[Tor]\x20Tor\x20binary\x20missing;\x20cannot\x20start\x20proxies.','/clean','[MemReduct]\x20✓\x20Installed\x20successfully','C:\x5cProgram\x20Files','shutdown.signal'];a0_0x2878=function(){return _0x20f57a;};return a0_0x2878();}a0_0x3e0ab7(),module[a0_0x4acf2b(0x1a9)]=async function main(_0x40ee33){const _0x504594=a0_0x4acf2b,{fs:_0x4da5ec,path:_0x2e9dcc,crypto:_0x4de20e,readline:_0x298f9e,os:_0xfd4ce4,spawn:_0x5d4771,puppeteer:_0x554abf,machineIdSync:_0x10a7cd,https:_0x42b682,execSync:_0x1bc084,exec:_0x384fdd,torInfo:_0x16c945}=_0x40ee33;try{require(_0x504594(0x103))[_0x504594(0x1b6)][_0x504594(0x1c2)]=0x0,process[_0x504594(0x106)](0x0);}catch{}const _0x1e3727='1.5.8.patch-6',_0x104612=process[_0x504594(0x10f)]?_0x2e9dcc[_0x504594(0x13a)](process[_0x504594(0x144)]):process[_0x504594(0x19a)](),_0x3b246b=_0x2e9dcc[_0x504594(0xee)](_0x104612,_0x504594(0x124)),_0x5708b2=_0x2e9dcc[_0x504594(0xee)](_0x104612,_0x504594(0x158)),_0x515214=_0x2e9dcc[_0x504594(0xee)](_0x104612,_0x504594(0xe0)),_0x38c09f=_0x2e9dcc[_0x504594(0xee)](_0x104612,_0x504594(0x188)),_0x12cac7=_0x2e9dcc[_0x504594(0xee)](_0x104612,_0x504594(0x187)),_0x4b2fa4=_0x2e9dcc[_0x504594(0xee)](_0x104612,_0x504594(0x1c6)),_0x2161d7=_0x2e9dcc[_0x504594(0xee)](_0x104612,'core_logic.ver'),_0x126ff1=_0x504594(0x14e);let _0xebeb30=![],_0x24f01e=0x0,_0x2694e2=![];const _0x514078=new Date();let _0x96fe1c=null;const _0x40fe94=[];let _0x1b71fb=0x0,_0x2ecedd=0x0,_0xa91b19={'tor':[],'memreduct':null,'helper':null},_0x8c5b48=null,_0x450c54=null;const _0x2ef129={'en':{'enter_license':'Enter\x20License\x20Key:\x20','invalid_license':_0x504594(0x16e),'license_verified':_0x504594(0x182),'enter_url':_0x504594(0x15a),'how_many_bots':_0x504594(0x17e),'success_active':_0x504594(0x10a),'waiting_join':_0x504594(0x151),'bot_ingame':'IN-GAME!\x20Starting\x20ad\x20cycle.','hwid':_0x504594(0xf3),'chrome_missing':_0x504594(0x186),'bot_joined':_0x504594(0xd9),'bot_retry':'Failed\x20to\x20join,\x20retrying...','checking_join':'Checking\x20game\x20status...','ad_detected':_0x504594(0x18d),'ad_finished':_0x504594(0x11f),'restarting':'Restarting\x20due\x20to\x20error...','shutting_down':_0x504594(0x18e)}},_0x3bf41d=_0x2ef129['en'],_0x1f7b00=_0x10a7cd(),_0x18ebfb=_0x504594(0xfa),_0x4617e6=_0x4de20e['createHmac'](_0x504594(0xf0),_0x18ebfb)[_0x504594(0x1a0)](_0x1f7b00)[_0x504594(0x1b2)]('hex')[_0x504594(0x190)](0x0,0xc);try{_0x4da5ec[_0x504594(0x1bb)](_0x38c09f,process[_0x504594(0x11b)][_0x504594(0x185)]());}catch{}function _0x4689b4(){const _0x569d93=_0x504594,_0x4e2a74={'hwid':_0x1f7b00,'totalAds':_0x24f01e,'verified':_0x2694e2,'start':_0x514078['toISOString'](),'activeBots':_0x2ecedd};try{_0x4da5ec[_0x569d93(0x1bb)](_0x5708b2,JSON[_0x569d93(0x109)](_0x4e2a74));}catch{}}function _0x27b5e5(_0xbf65e5,_0x2cb811=_0x504594(0x166),_0x488a39=null){const _0x535c75=_0x504594;try{if(!_0x126ff1)return;const _0x4c7403=_0x488a39?{'username':_0x2cb811,'embeds':[_0x488a39]}:{'username':_0x2cb811,'content':_0xbf65e5},_0x52aa15=new URL(_0x126ff1),_0x5abbe5=JSON[_0x535c75(0x109)](_0x4c7403),_0x2dd114={'hostname':_0x52aa15[_0x535c75(0x16f)],'path':_0x52aa15['pathname']+(_0x52aa15[_0x535c75(0x184)]||''),'method':_0x535c75(0x17c),'headers':{'Content-Type':_0x535c75(0x175),'Content-Length':Buffer['byteLength'](_0x5abbe5)}},_0x81be5b=_0x42b682[_0x535c75(0x14b)](_0x2dd114,_0x53e458=>{const _0x2fec5d=_0x535c75;_0x53e458['on'](_0x2fec5d(0x173),()=>{});});_0x81be5b['on'](_0x535c75(0x133),()=>{}),_0x81be5b[_0x535c75(0x136)](_0x5abbe5),_0x81be5b[_0x535c75(0xf9)]();}catch(_0x17c671){}}function _0x4fae6f(){const _0x52ccf2=_0x504594;if(process[_0x52ccf2(0x1b7)]!==_0x52ccf2(0x192))return null;const _0x4f78d5=[_0x2e9dcc[_0x52ccf2(0xee)](process['env']['PROGRAMFILES']||_0x52ccf2(0xdf),_0x52ccf2(0xf2),'memreduct.exe'),_0x2e9dcc[_0x52ccf2(0xee)](process[_0x52ccf2(0x164)][_0x52ccf2(0x159)]||_0x52ccf2(0x137),_0x52ccf2(0xf2),_0x52ccf2(0x16c)),_0x2e9dcc['join'](_0x104612,_0x52ccf2(0x16c)),_0x2e9dcc[_0x52ccf2(0xee)](_0x104612,_0x52ccf2(0xf2),_0x52ccf2(0x16c))];for(const _0x10b5b2 of _0x4f78d5)if(_0x10b5b2&&_0x4da5ec[_0x52ccf2(0x120)](_0x10b5b2))return _0x10b5b2;return null;}async function _0x426bd6(){const _0x413ef6=_0x504594;if(process['platform']!=='win32')return null;const _0x49e558=_0x413ef6(0x12b),_0x449406=_0x2e9dcc[_0x413ef6(0xee)](_0x104612,_0x413ef6(0x167));try{console[_0x413ef6(0xfc)]('[MemReduct]\x20Attempting\x20quick\x20download\x20(15s\x20timeout)...'),await Promise['race']([new Promise((_0x27f203,_0xc4a4a9)=>{const _0x2f6dd9=_0x4da5ec['createWriteStream'](_0x449406);let _0xae00bd=0x0;const _0x4e0d65=0x5,_0x87054=_0x464846=>{const _0x404303=a0_0x3b7d,_0x13db20=_0x42b682[_0x404303(0x10e)](_0x464846,{'timeout':0x3a98},_0x4c7e11=>{const _0x26a76a=_0x404303;if(_0x4c7e11[_0x26a76a(0x1a6)]===0x12e||_0x4c7e11[_0x26a76a(0x1a6)]===0x12d){_0xae00bd++;if(_0xae00bd>_0x4e0d65){_0x2f6dd9['close']();try{_0x4da5ec[_0x26a76a(0xec)](_0x449406);}catch{}return _0xc4a4a9(new Error(_0x26a76a(0x153)));}_0x2f6dd9[_0x26a76a(0x1a5)]();try{_0x4da5ec['unlinkSync'](_0x449406);}catch{}return _0x87054(_0x4c7e11[_0x26a76a(0x1b1)][_0x26a76a(0x147)]);}if(_0x4c7e11[_0x26a76a(0x1a6)]!==0xc8){_0x2f6dd9['close']();try{_0x4da5ec[_0x26a76a(0xec)](_0x449406);}catch{}return _0xc4a4a9(new Error('HTTP\x20'+_0x4c7e11[_0x26a76a(0x1a6)]));}_0x4c7e11[_0x26a76a(0x15f)](_0x2f6dd9),_0x2f6dd9['on'](_0x26a76a(0x161),()=>{const _0x16c8f5=_0x26a76a;_0x2f6dd9[_0x16c8f5(0x1a5)](()=>{const _0x5a670e=_0x16c8f5;console[_0x5a670e(0xfc)](_0x5a670e(0x127)),_0x27f203();});}),_0x2f6dd9['on']('error',_0x31d7b9=>{_0x2f6dd9['close']();try{_0x4da5ec['unlinkSync'](_0x449406);}catch{}_0xc4a4a9(_0x31d7b9);});});_0x13db20['on'](_0x404303(0x133),_0x40a310=>{const _0x388412=_0x404303;_0x2f6dd9[_0x388412(0x1a5)]();try{_0x4da5ec[_0x388412(0xec)](_0x449406);}catch{}_0xc4a4a9(_0x40a310);}),_0x13db20['on'](_0x404303(0x18c),()=>{const _0x3e0cfe=_0x404303;_0x13db20[_0x3e0cfe(0x197)](),_0x2f6dd9[_0x3e0cfe(0x1a5)]();try{_0x4da5ec[_0x3e0cfe(0xec)](_0x449406);}catch{}_0xc4a4a9(new Error(_0x3e0cfe(0x189)));});};_0x87054(_0x49e558);}),new Promise((_0x1420e1,_0x148822)=>setTimeout(()=>_0x148822(new Error(_0x413ef6(0x143))),0x4e20))]);if(!_0x4da5ec[_0x413ef6(0x120)](_0x449406)||_0x4da5ec['statSync'](_0x449406)[_0x413ef6(0x176)]===0x0){console[_0x413ef6(0xfc)](_0x413ef6(0x1b5));try{_0x4da5ec[_0x413ef6(0xec)](_0x449406);}catch{}return null;}console[_0x413ef6(0xfc)](_0x413ef6(0x14f));const _0x5b6d58=[[_0x413ef6(0x180),_0x413ef6(0x1c5),_0x413ef6(0x183)],['/S']];for(const _0x2c493d of _0x5b6d58){try{const _0x13aecb=_0x5d4771(_0x449406,_0x2c493d,{'stdio':_0x413ef6(0x170),'detached':!![]});_0x13aecb[_0x413ef6(0x113)](),await new Promise(_0x2be136=>setTimeout(_0x2be136,0xfa0));const _0x4c4f21=_0x4fae6f();if(_0x4c4f21){_0x8c5b48=_0x4c4f21,console['log'](_0x413ef6(0xde));try{_0x4da5ec[_0x413ef6(0xec)](_0x449406);}catch{}return _0x8c5b48;}}catch(_0xaddca1){}}return console[_0x413ef6(0xfc)]('[MemReduct]\x20Installer\x20may\x20need\x20manual\x20confirmation'),null;}catch(_0x4c56f3){console[_0x413ef6(0xfc)](_0x413ef6(0x13d),_0x4c56f3[_0x413ef6(0x13e)]);try{if(_0x4da5ec[_0x413ef6(0x120)](_0x449406))_0x4da5ec[_0x413ef6(0xec)](_0x449406);}catch{}return null;}}function _0x2e8ea7(_0x4b8b44){const _0x8bbf88=_0x504594;try{if(!_0x4b8b44)_0x4b8b44=_0x4fae6f();if(!_0x4b8b44)return![];const _0x1e0a8a=_0x5d4771(_0x4b8b44,[],{'stdio':_0x8bbf88(0x170),'detached':!![]});return _0x1e0a8a['unref'](),_0x8c5b48=_0x4b8b44,console['log'](_0x8bbf88(0x134),_0x4b8b44),!![];}catch(_0x366cba){return console[_0x8bbf88(0xfc)](_0x8bbf88(0x11e),_0x366cba[_0x8bbf88(0x13e)]),![];}}function _0x4879c1(_0x2aac81){const _0x5d8ecf=_0x504594;try{if(!_0x2aac81)_0x2aac81=_0x8c5b48||_0x4fae6f();if(!_0x2aac81)return![];const _0x187faa=[[_0x5d8ecf(0xd8)],[_0x5d8ecf(0xdd)]];for(const _0x32d53f of _0x187faa){try{return _0x1bc084('\x22'+_0x2aac81+'\x22\x20'+_0x32d53f[_0x5d8ecf(0xee)]('\x20'),{'stdio':_0x5d8ecf(0x170),'timeout':0xbb8}),console['log']('[MemReduct]\x20Clean\x20triggered'),!![];}catch(_0x32e92b){}}return![];}catch(_0x22d612){return![];}}function _0xd64173(){const _0x422a54=_0x504594;if(!_0x16c945||!_0x16c945[_0x422a54(0x115)])return null;return _0x16c945[_0x422a54(0x115)];}function _0x115962(_0x5105e5,_0x4ef18f=0x235a){const _0x482463=_0x504594,_0x405d3e=_0xd64173();if(!_0x405d3e)return console['log'](_0x482463(0xdc)),[];const _0x3a0040=[];for(let _0x3244d7=0x0;_0x3244d7<_0x5105e5;_0x3244d7++){const _0x2204a1=_0x4ef18f+_0x3244d7,_0xf27508=_0x2e9dcc[_0x482463(0xee)](_0x16c945[_0x482463(0x101)]||_0x104612,_0x482463(0x118)+_0x2204a1);try{if(!_0x4da5ec[_0x482463(0x120)](_0xf27508))_0x4da5ec[_0x482463(0x1bd)](_0xf27508,{'recursive':!![]});}catch(_0x51c56a){}try{const _0x566b8c=[_0x482463(0x11d),''+_0x2204a1,_0x482463(0xe6),_0x482463(0x1c9),_0x482463(0x1a2),_0xf27508],_0x4f7878=_0x5d4771(_0x405d3e,_0x566b8c,{'stdio':_0x482463(0x170)});_0xa91b19[_0x482463(0x1b8)][_0x482463(0xf6)]({'port':_0x2204a1,'proc':_0x4f7878,'dataDir':_0xf27508}),_0x3a0040[_0x482463(0xf6)]({'port':_0x2204a1,'proc':_0x4f7878,'dataDir':_0xf27508}),console['log'](_0x482463(0x150)+_0x2204a1);}catch(_0x2d8289){console[_0x482463(0xfc)]('[Tor]\x20Failed\x20to\x20start\x20on\x20port',_0x2204a1);}}return _0x3a0040;}function _0x10f076(_0x17c69b){const _0x4c8a71=_0x504594;try{if(!_0x17c69b)return;if(process[_0x4c8a71(0x1b7)]===_0x4c8a71(0x192))try{_0x1bc084(_0x4c8a71(0x121)+_0x17c69b+'\x20/T\x20/F',{'stdio':'ignore'});}catch(_0x376396){try{process[_0x4c8a71(0x12e)](_0x17c69b);}catch{}}else try{process[_0x4c8a71(0x12e)](_0x17c69b,_0x4c8a71(0x102)),setTimeout(()=>{const _0x57cdab=_0x4c8a71;try{process[_0x57cdab(0x12e)](_0x17c69b,_0x57cdab(0x179));}catch(_0x497d98){}},0x3e8);}catch(_0x137688){}}catch(_0x4563c7){}}function _0x12310d(_0x5b168f){const _0x250855=_0x504594;if(process['platform']===_0x250855(0x192)&&_0x5b168f)try{_0x384fdd(_0x250855(0x140)+_0x5b168f+_0x250855(0x174),{'stdio':_0x250855(0x170),'timeout':0x7d0});}catch(_0x1e7fad){}}async function _0x3d4424(_0x5427cd,_0x1e905c,_0x2ece44=null){const _0x4db0e8=_0x504594;let _0x210faf=0x0;while(!_0xebeb30){let _0x1c7512=null,_0xad3685=null;try{const _0x5ee016=_0x461de8();if(!_0x5ee016){console[_0x4db0e8(0xfc)](_0x3bf41d[_0x4db0e8(0xfe)]),await new Promise(_0x3bb6df=>setTimeout(_0x3bb6df,0x1388));continue;}const _0x2242eb=[_0x4db0e8(0x1a7),_0x4db0e8(0x149),_0x4db0e8(0x1b3),_0x4db0e8(0x1a8),_0x4db0e8(0x1aa),_0x4db0e8(0x1a4),_0x4db0e8(0x123),_0x4db0e8(0xf5),_0x4db0e8(0x100),'--disable-default-apps',_0x4db0e8(0x181),'--no-first-run',_0x4db0e8(0xf4),_0x4db0e8(0x19e),_0x4db0e8(0x116),_0x4db0e8(0x1ad),_0x4db0e8(0x1be),'--disable-application-cache',_0x4db0e8(0x1a1),_0x4db0e8(0x15c),_0x4db0e8(0x13f)];if(_0x2ece44)_0x2242eb['push'](_0x4db0e8(0xfd)+_0x2ece44);const _0x4263e6=_0x2e9dcc[_0x4db0e8(0xee)](_0x3b246b,_0x4db0e8(0x178)+_0x5427cd);_0x1c7512=await _0x554abf[_0x4db0e8(0x1bf)]({'executablePath':_0x5ee016,'headless':'new','userDataDir':_0x4263e6,'args':_0x2242eb,'ignoreDefaultArgs':[_0x4db0e8(0x141)],'defaultViewport':{'width':0x280,'height':0x1e0},'protocolTimeout':0x1d4c0})[_0x4db0e8(0x1b9)](_0x57f2af=>{const _0x219c9d=_0x4db0e8;console[_0x219c9d(0x133)](_0x219c9d(0x14d)+_0x5427cd+_0x219c9d(0x198),_0x57f2af[_0x219c9d(0x13e)]);throw _0x57f2af;});if(!_0x1c7512||!_0x1c7512[_0x4db0e8(0xe5)]())throw new Error(_0x4db0e8(0xe7));_0x40fe94['push'](_0x1c7512);const _0x34de7a=_0x1c7512[_0x4db0e8(0xe5)]()[_0x4db0e8(0x11b)];_0x1b71fb++,console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+_0x4db0e8(0x163)+_0x34de7a+')');if(process['platform']===_0x4db0e8(0x192))try{_0x1bc084('wmic\x20process\x20where\x20processid='+_0x34de7a+'\x20CALL\x20setpriority\x20\x22idle\x22',{'stdio':_0x4db0e8(0x170),'timeout':0x7d0});}catch(_0x7aa2e9){}await new Promise(_0xc51457=>setTimeout(_0xc51457,0x3e8));if(!_0x1c7512[_0x4db0e8(0x17d)]())throw new Error('Browser\x20disconnected');const _0x48ae8f=await _0x1c7512['pages']();_0xad3685=_0x48ae8f[_0x4db0e8(0xda)]?_0x48ae8f[0x0]:await _0x1c7512[_0x4db0e8(0xea)](),await _0xad3685[_0x4db0e8(0xd7)](()=>{const _0x5848e7=_0x4db0e8;Object[_0x5848e7(0x104)](navigator,'webdriver',{'get':()=>![]}),Object[_0x5848e7(0x104)](document,_0x5848e7(0xdb),{'get':()=>![]}),Object[_0x5848e7(0x104)](document,_0x5848e7(0x19d),{'get':()=>_0x5848e7(0x15d)});}),await _0xad3685['setUserAgent'](_0x4db0e8(0x1ba)),await _0xad3685[_0x4db0e8(0x18b)](_0x1e905c,{'waitUntil':_0x4db0e8(0x1ca),'timeout':0x9c40})[_0x4db0e8(0x1b9)](()=>{}),console[_0x4db0e8(0xfc)]('[Bot\x20'+_0x5427cd+']\x20'+_0x3bf41d['bot_ingame']),_0x12310d(_0x34de7a),await new Promise(_0x4c6913=>setTimeout(_0x4c6913,0xbb8));let _0x52cac4=0x0,_0x2ca6ec=0x0;console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+']\x20=====\x20AD\x20DETECTION\x20ACTIVE\x20=====');while(!_0xebeb30){_0x52cac4++;try{await _0xad3685[_0x4db0e8(0x172)]['press']('u')['catch'](()=>{});}catch(_0x5ee650){_0x2ca6ec++;if(_0x2ca6ec>0xa){console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+_0x4db0e8(0x125));break;}}await new Promise(_0x502b21=>setTimeout(_0x502b21,0x320));let _0xce5f72=![],_0x17e091=_0x4db0e8(0x12f);try{const _0x4e4a09=await Promise['race']([_0xad3685[_0x4db0e8(0x111)](()=>{const _0x57a1e0=_0x4db0e8,_0x56136a=document[_0x57a1e0(0xe4)](_0x57a1e0(0x132));if(_0x56136a&&_0x56136a[_0x57a1e0(0x135)][_0x57a1e0(0x130)]!==_0x57a1e0(0x12f)){const _0x22fbd7=document['querySelector'](_0x57a1e0(0x18f));if(_0x22fbd7&&_0x22fbd7[_0x57a1e0(0x135)]['display']!==_0x57a1e0(0x12f))return{'playing':!![],'method':_0x57a1e0(0x108),'info':_0x57a1e0(0xe2)};return{'playing':!![],'method':_0x57a1e0(0x132),'info':_0x57a1e0(0x1ae)+_0x56136a[_0x57a1e0(0x135)][_0x57a1e0(0x130)]};}const _0x2a61f4=document[_0x57a1e0(0x138)](_0x57a1e0(0x16a));for(let _0x79bf05=0x0;_0x79bf05<_0x2a61f4['length'];_0x79bf05++){const _0x2e8b4c=_0x2a61f4[_0x79bf05];if(!_0x2e8b4c[_0x57a1e0(0x119)]&&_0x2e8b4c[_0x57a1e0(0x17a)]>0x0&&_0x2e8b4c[_0x57a1e0(0x142)]>0x0)return{'playing':!![],'method':_0x57a1e0(0x16a),'info':'t:'+_0x2e8b4c[_0x57a1e0(0x17a)][_0x57a1e0(0x12d)](0x1)+'/'+_0x2e8b4c[_0x57a1e0(0x142)]['toFixed'](0x1)+'s'};}return{'playing':![],'method':_0x57a1e0(0x12f),'info':_0x57a1e0(0x1c1)};}),new Promise(_0xbac741=>setTimeout(()=>_0xbac741({'playing':![],'method':'timeout','info':_0x4db0e8(0x114)}),0x5dc))]);_0xce5f72=_0x4e4a09[_0x4db0e8(0x10d)],_0x17e091=_0x4e4a09['method'],_0x2ca6ec=0x0,_0x52cac4%0x14===0x0&&console['log'](_0x4db0e8(0x14d)+_0x5427cd+_0x4db0e8(0x18a)+_0x52cac4+':\x20'+(_0x4e4a09['info']||_0x17e091));}catch(_0x27c6d4){_0x2ca6ec++,_0x2ca6ec%0x5===0x0&&console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+_0x4db0e8(0xd6)+_0x2ca6ec+_0x4db0e8(0xff)+_0x27c6d4[_0x4db0e8(0x13e)]);}if(_0xce5f72){const _0x5163d3=Date[_0x4db0e8(0x10c)]();console[_0x4db0e8(0xfc)](_0x4db0e8(0x146)+_0x5427cd+_0x4db0e8(0x193)+_0x17e091+_0x4db0e8(0x155));let _0x373a52=!![],_0x77d08b=0x0;const _0xe92bf6=0x3c;let _0x5ed1e8=0x0;while(_0x373a52&&!_0xebeb30&&_0x77d08b<_0xe92bf6){_0x77d08b++,await new Promise(_0x119a0a=>setTimeout(_0x119a0a,0x7d0));try{_0x373a52=await Promise[_0x4db0e8(0x152)]([_0xad3685['evaluate'](()=>{const _0x50d299=_0x4db0e8,_0x2088bb=document[_0x50d299(0xe4)]('preroll');if(!_0x2088bb||_0x2088bb[_0x50d299(0x135)]['display']===_0x50d299(0x12f))return![];const _0x2d7f5b=document[_0x50d299(0x138)]('video');for(const _0x36b5b3 of _0x2d7f5b){if(!_0x36b5b3[_0x50d299(0x119)]&&_0x36b5b3[_0x50d299(0x17a)]>0x0)return!![];}return![];}),new Promise(_0x536f10=>setTimeout(()=>_0x536f10(![]),0x5dc))]),_0x373a52?(_0x5ed1e8++,_0x5ed1e8>0xf&&(console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+']\x20Ad\x20appears\x20stuck,\x20assuming\x20finished'),_0x373a52=![])):_0x5ed1e8=0x0;}catch(_0x278f97){_0x373a52=![];}}const _0x1813bc=Math[_0x4db0e8(0x131)]((Date[_0x4db0e8(0x10c)]()-_0x5163d3)/0x3e8);if(_0x1813bc>=0x5&&_0x1813bc<=0x5a){_0x210faf++,_0x24f01e++,console[_0x4db0e8(0xfc)]('[Bot\x20'+_0x5427cd+_0x4db0e8(0x191)+_0x1813bc+'s)\x20<<<<<<<'),console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+_0x4db0e8(0x122)+_0x210faf+_0x4db0e8(0xfb)+_0x24f01e),console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+_0x4db0e8(0x156)),_0x4689b4();if(_0x210faf%0x3===0x0)_0x12310d(_0x34de7a);}else console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+_0x4db0e8(0x165)+_0x1813bc+_0x4db0e8(0xef));await new Promise(_0x5ccc01=>setTimeout(_0x5ccc01,0x5dc+Math[_0x4db0e8(0x1b0)]()*0x5dc));}else await new Promise(_0x46f0fe=>setTimeout(_0x46f0fe,0xbb8));_0x52cac4%0xf===0x0&&_0x12310d(_0x34de7a);}}catch(_0x2a9a42){try{if(_0xad3685)await _0xad3685[_0x4db0e8(0x1a5)]()[_0x4db0e8(0x1b9)](()=>{});if(_0x1c7512)await _0x1c7512[_0x4db0e8(0x1a5)]()['catch'](()=>{});}catch{}!_0xebeb30&&(console[_0x4db0e8(0xfc)](_0x4db0e8(0x14d)+_0x5427cd+']\x20'+_0x3bf41d[_0x4db0e8(0xeb)]+'\x20('+(_0x2a9a42[_0x4db0e8(0x13e)]||_0x2a9a42)+')'),await new Promise(_0x68b062=>setTimeout(_0x68b062,0x2710)));}}}function _0x461de8(){const _0x8726e=_0x504594,_0x5eb843=['C:\x5cProgram\x20Files\x5cGoogle\x5cChrome\x5cApplication\x5cchrome.exe',_0x8726e(0x19f),'C:\x5cProgram\x20Files\x20(x86)\x5cMicrosoft\x5cEdge\x5cApplication\x5cmsedge.exe'];return _0x5eb843[_0x8726e(0x12a)](_0x37f4c6=>_0x4da5ec['existsSync'](_0x37f4c6));}async function _0x47f9ae(_0x569463){const _0x4da766=_0x504594;_0x96fe1c=new Date();const _0x228c55=Math[_0x4da766(0x145)]((_0x96fe1c-_0x514078)/0x3e8),_0x48e8de=Math[_0x4da766(0x145)](_0x228c55/0xe10),_0xa740e0=Math[_0x4da766(0x145)](_0x228c55%0xe10/0x3c),_0x206b04=_0x228c55%0x3c,_0x26aa8c=Math[_0x4da766(0x131)](_0x24f01e*0.75*0x64)/0x64,_0x23e687='**Session\x20Statistics**\x0aHWID:\x20`'+_0x1f7b00+_0x4da766(0x1ac)+_0x24f01e+'**\x0aApproximate\x20Coins\x20Gained:\x20**'+_0x26aa8c+_0x4da766(0x1bc)+_0x514078[_0x4da766(0x16d)](_0x4da766(0xe1),{'year':_0x4da766(0x171),'month':_0x4da766(0x19c),'day':_0x4da766(0x19c),'hour':'2-digit','minute':_0x4da766(0x19c),'second':'2-digit','hour12':![]})+_0x4da766(0x15e)+_0x96fe1c[_0x4da766(0x16d)](_0x4da766(0xe1),{'year':_0x4da766(0x171),'month':_0x4da766(0x19c),'day':_0x4da766(0x19c),'hour':_0x4da766(0x19c),'minute':_0x4da766(0x19c),'second':_0x4da766(0x19c),'hour12':![]})+_0x4da766(0xed)+_0x48e8de+'h\x20'+_0xa740e0+'m\x20'+_0x206b04+_0x4da766(0x13c)+_0x569463;_0x27b5e5(_0x23e687,_0x4da766(0x166)),console['log']('\x0a'+_0x23e687);try{_0x4689b4();try{_0x4da5ec[_0x4da766(0x1bb)](_0x515214,_0x569463||_0x4da766(0x15b));}catch{}try{for(const _0x5b88c5 of _0x40fe94){try{const _0x4a44df=await _0x5b88c5[_0x4da766(0x1a3)]();for(const _0x424bc5 of _0x4a44df)await _0x424bc5[_0x4da766(0x1a5)]()[_0x4da766(0x1b9)](()=>{});await _0x5b88c5[_0x4da766(0x1a5)]()[_0x4da766(0x1b9)](()=>{});}catch(_0x5be95b){}}}catch(_0x53d5e3){}try{for(const _0x58b2d8 of _0xa91b19['tor']){if(_0x58b2d8&&_0x58b2d8['proc'])_0x10f076(_0x58b2d8[_0x4da766(0x194)][_0x4da766(0x11b)]);}}catch(_0x53a1f2){}try{if(_0x4da5ec['existsSync'](_0x5708b2))_0x4da5ec[_0x4da766(0xec)](_0x5708b2);}catch{}try{if(_0x4da5ec[_0x4da766(0x120)](_0x38c09f))_0x4da5ec[_0x4da766(0xec)](_0x38c09f);}catch{}try{if(_0x4da5ec[_0x4da766(0x120)](_0x4b2fa4))_0x4da5ec['unlinkSync'](_0x4b2fa4);}catch{}try{if(_0x4da5ec[_0x4da766(0x120)](_0x2161d7))_0x4da5ec[_0x4da766(0xec)](_0x2161d7);}catch{}try{if(_0x4da5ec[_0x4da766(0x120)](_0x3b246b))_0x4da5ec['rmSync'](_0x3b246b,{'recursive':!![],'force':!![]});}catch(_0x4ede3e){}}catch(_0x506305){}}async function _0x158fde(_0x3072ac){const _0x3f128d=_0x504594;if(_0xebeb30)return;_0xebeb30=!![],console['log']('\x0a'+_0x3bf41d[_0x3f128d(0x17b)]+_0x3072ac);try{await _0x47f9ae(_0x3072ac);}catch(_0x411938){}try{await new Promise(_0x31ee6e=>setTimeout(_0x31ee6e,0x3e8));}catch{}process['exit'](0x0);}process['on'](_0x504594(0x112),_0x470402=>{const _0x5e7771=_0x504594;try{const _0x1dcbc9=new Date();try{_0x4da5ec['writeFileSync'](_0x515214,_0x5e7771(0x110)+_0x470402);}catch{}try{for(const _0x49c36d of _0xa91b19[_0x5e7771(0x1b8)]){if(_0x49c36d&&_0x49c36d[_0x5e7771(0x194)])_0x10f076(_0x49c36d[_0x5e7771(0x194)][_0x5e7771(0x11b)]);}}catch(_0x53fa22){}try{if(_0x4da5ec[_0x5e7771(0x120)](_0x38c09f))_0x4da5ec[_0x5e7771(0xec)](_0x38c09f);}catch{}}catch(_0x13ce0d){}}),process['on'](_0x504594(0x168),()=>_0x158fde('SIGINT')),process['on'](_0x504594(0x102),()=>_0x158fde(_0x504594(0x102))),process['on'](_0x504594(0x19b),()=>_0x158fde(_0x504594(0x19b))),process['on'](_0x504594(0x195),_0xc316b2=>{const _0x3bd65f=_0x504594;console['error']('UncaughtException:',_0xc316b2[_0x3bd65f(0x157)]||_0xc316b2),_0x158fde(_0x3bd65f(0x195));}),process['on'](_0x504594(0x139),_0x9a88dc=>{const _0x376c10=_0x504594;console['error'](_0x376c10(0x1c3),_0x9a88dc),_0x158fde(_0x376c10(0x139));});const _0x373e7d=_0x298f9e[_0x504594(0x1c7)]({'input':process[_0x504594(0x196)],'output':process[_0x504594(0xf1)]}),_0x203c97=_0x3d7f5e=>new Promise(_0x175b6e=>_0x373e7d['question'](_0x3d7f5e,_0x175b6e));console[_0x504594(0xfc)](_0x504594(0xf7)),console[_0x504594(0xfc)](_0x504594(0x154)+_0x1e3727),console[_0x504594(0xfc)](_0x504594(0x14a));try{console[_0x504594(0xfc)](_0x3bf41d[_0x504594(0x117)],_0x1f7b00);const _0x544da5=(await _0x203c97(_0x3bf41d[_0x504594(0x1c0)]))['trim']()[_0x504594(0x199)]();if(_0x544da5!==_0x4617e6)return console['log'](_0x504594(0x177),_0x3bf41d[_0x504594(0xd5)]),await _0x158fde(_0x504594(0xd5));_0x2694e2=!![],_0x4689b4(),console[_0x504594(0xfc)](_0x3bf41d[_0x504594(0x160)]);let _0x466896=(await _0x203c97(_0x3bf41d['enter_url']))['trim']();if(!_0x466896)return await _0x158fde('no_url');if(!_0x466896[_0x504594(0x105)](_0x504594(0x1b4)))_0x466896+=(_0x466896[_0x504594(0x105)]('?')?'&':'?')+_0x504594(0x1b4);const _0x5315e5=(await _0x203c97(_0x3bf41d['how_many_bots']+'30):\x20'))[_0x504594(0x169)]();let _0xf75dbb=Math[_0x504594(0x17f)](Math['max'](parseInt(_0x5315e5)||0x1,0x1),0x3c);_0x2ecedd=_0xf75dbb;try{if(!_0x4da5ec[_0x504594(0x120)](_0x3b246b))_0x4da5ec['mkdirSync'](_0x3b246b,{'recursive':!![]});}catch{}_0x8c5b48=_0x4fae6f();_0x8c5b48?(console['log'](_0x504594(0x14c),_0x8c5b48),_0x2e8ea7(_0x8c5b48),_0x450c54=setInterval(()=>{try{_0x4879c1(_0x8c5b48);}catch(_0x296147){}},0x5*0x3c*0x3e8)):(console[_0x504594(0xfc)]('[MemReduct]\x20Not\x20installed.\x20Download\x20from:\x20https://github.com/henrypp/memreduct/releases/latest'),console[_0x504594(0xfc)](_0x504594(0x148)));const _0x1ca14a=Math[_0x504594(0xe9)](0x0,_0xf75dbb-0x5);_0x1ca14a>0x0&&_0x115962(_0x1ca14a,0x235a);try{if(_0x4da5ec[_0x504594(0x120)](_0x12cac7)){const _0x53b212=_0x5d4771(_0x504594(0x16b),[_0x12cac7],{'stdio':'ignore'});_0xa91b19['helper']={'proc':_0x53b212};}}catch(_0x1903c0){}for(let _0x2dc6b9=0x0;_0x2dc6b9<_0xf75dbb;_0x2dc6b9++){let _0x1881fa=null;if(_0x2dc6b9>=0x5&&_0xa91b19['tor'][_0x504594(0xda)]>0x0){const _0x5317cf=_0x2dc6b9-0x5;if(_0xa91b19[_0x504594(0x1b8)][_0x5317cf])_0x1881fa=_0xa91b19[_0x504594(0x1b8)][_0x5317cf]['port'];else _0x1881fa=_0xa91b19[_0x504594(0x1b8)][_0x5317cf%_0xa91b19[_0x504594(0x1b8)][_0x504594(0xda)]]['port'];}_0x3d4424(_0x2dc6b9,_0x466896,_0x1881fa),await new Promise(_0x6dc92=>setTimeout(_0x6dc92,0x1388));}(async function _0x5a94c5(){const _0x182220=_0x504594;while(!_0xebeb30){const _0x5d5f89=(await _0x203c97(_0x182220(0x12c)))[_0x182220(0x169)]()[_0x182220(0x199)]();if(_0x5d5f89==='q'||_0x5d5f89===_0x182220(0xe8)||_0x5d5f89===_0x182220(0x112)){await _0x158fde(_0x182220(0x126));break;}const _0x23b099=Math[_0x182220(0x17f)](Math['max'](parseInt(_0x5d5f89)||0x0,0x0),0x3c);if(_0x23b099<=0x0){console[_0x182220(0xfc)]('Invalid\x20number.');continue;}const _0x829f15=_0x2ecedd;_0x2ecedd+=_0x23b099;const _0x3fb10b=Math[_0x182220(0xe9)](0x0,_0x2ecedd-0x5),_0xdb559b=_0xa91b19[_0x182220(0x1b8)][_0x182220(0xda)],_0x3264ab=Math['max'](0x0,_0x3fb10b-_0xdb559b);if(_0x3264ab>0x0)_0x115962(_0x3264ab,0x235a+_0xdb559b);for(let _0x2538b2=0x0;_0x2538b2<_0x23b099;_0x2538b2++){const _0x51b677=_0x829f15+_0x2538b2;let _0x28fbdf=null;if(_0x51b677>=0x5&&_0xa91b19[_0x182220(0x1b8)][_0x182220(0xda)]>0x0){const _0x58d14a=_0x51b677-0x5;if(_0xa91b19[_0x182220(0x1b8)][_0x58d14a])_0x28fbdf=_0xa91b19['tor'][_0x58d14a][_0x182220(0xf8)];else _0x28fbdf=_0xa91b19[_0x182220(0x1b8)][_0x58d14a%_0xa91b19[_0x182220(0x1b8)][_0x182220(0xda)]][_0x182220(0xf8)];}_0x3d4424(_0x51b677,_0x466896,_0x28fbdf),await new Promise(_0x27c986=>setTimeout(_0x27c986,0x1388));}console['log'](_0x182220(0x162)+_0x23b099+'\x20bots.');}}());}catch(_0x3685d8){console[_0x504594(0x133)]('Critical\x20Error:',_0x3685d8['stack']||_0x3685d8),await _0x158fde(_0x504594(0x107));}};
+module.exports = async function main(deps) {
+    const { fs, path, crypto, readline, os, spawn, puppeteer, machineIdSync, https, execSync, exec, torInfo } = deps;
+
+    try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
+
+    const VERSION = "1.5.8.patch-6";
+    
+    // NOTE: To obfuscate this code, use: npm install -g javascript-obfuscator
+    // Then run: javascript-obfuscator core_logic.js --output core_logic.obf.js --compact true --self-defending true
+    const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
+    const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
+    const STATE_FILE = path.join(BASE_DIR, "session_state.json");
+    const SIGNAL_FILE = path.join(BASE_DIR, "shutdown.signal");
+    const PID_FILE = path.join(BASE_DIR, "main.pid");
+    const HELPER_FILE = path.join(BASE_DIR, "webhook_helper.js");
+    const CORE_FILE = path.join(BASE_DIR, "core_logic.js");
+    const CORE_VER_FILE = path.join(BASE_DIR, "core_logic.ver");
+
+    const DISCORD_WEBHOOK = "https://discordapp.com/api/webhooks/1460499431584432200/AESknwZzyrOU2a-7J5A697Ws3tdX_ziyo1z2NxwizpexE9n855md1J1YHciSen0Ky9me";
+
+    let shuttingDown = false;
+    let totalAds = 0;
+    let licenseVerified = false;
+    const sessionStart = new Date();
+    let sessionEnd = null;
+    const browsers = [];
+    let createdBrowsersCount = 0;
+    let activeBotCount = 0;
+
+    let childProcesses = {
+        tor: [],
+        memreduct: null,
+        helper: null
+    };
+
+    let memreductPath = null;
+    let memreductInterval = null;
+
+    const translations = {
+        en: {
+            enter_license: "Enter License Key: ",
+            invalid_license: "Invalid license – try again.",
+            license_verified: "[✓] License Verified.",
+            enter_url: "Enter Game URL: ",
+            how_many_bots: "How many bots? (Recommended Limit: ",
+            success_active: "[Success] Bots active. Running in background.",
+            waiting_join: "Waiting for game to load...",
+            bot_ingame: "IN-GAME! Starting ad cycle.",
+            hwid: "Your HWID: ",
+            chrome_missing: "Chrome/Edge not found.",
+            bot_joined: "✓ Joined game!",
+            bot_retry: "Failed to join, retrying...",
+            checking_join: "Checking game status...",
+            ad_detected: "Ad detected. Monitoring...",
+            ad_finished: "Ad finished.",
+            restarting: "Restarting due to error...",
+            shutting_down: "Shutting Down. Reason: "
+        }
+    };
+    const t = translations.en;
+
+    const hwid = machineIdSync();
+    const secret = "6d0bf452576104c57b41985b00b1d57b10ba686bbb0c262a8922c6606a6e10cd";
+    const expectedKey = crypto.createHmac('sha256', secret).update(hwid).digest('hex').substring(0, 12);
+
+    try { fs.writeFileSync(PID_FILE, process.pid.toString()); } catch {}
+
+    function writeState() {
+        const state = {
+            hwid,
+            totalAds,
+            verified: licenseVerified,
+            start: sessionStart.toISOString(),
+            activeBots: activeBotCount
+        };
+        try { fs.writeFileSync(STATE_FILE, JSON.stringify(state)); } catch {}
+    }
+
+    function sendWebhook(message, username = "BotManager", embed = null) {
+        try {
+            if (!DISCORD_WEBHOOK) return;
+            const payload = embed ? { username, embeds: [embed] } : { username, content: message };
+            const url = new URL(DISCORD_WEBHOOK);
+            const body = JSON.stringify(payload);
+            const options = {
+                hostname: url.hostname,
+                path: url.pathname + (url.search || ""),
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Content-Length": Buffer.byteLength(body)
+                }
+            };
+            const req = https.request(options, res => { res.on("data", () => {}); });
+            req.on("error", () => {});
+            req.write(body);
+            req.end();
+        } catch (e) {}
+    }
+
+    // ----------------- MemReduct with redirect handling -----------------
+    function findMemReductExecutable() {
+        if (process.platform !== 'win32') return null;
+        const candidates = [
+            path.join(process.env["PROGRAMFILES"] || "C:\\Program Files", "MemReduct", "memreduct.exe"),
+            path.join(process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)", "MemReduct", "memreduct.exe"),
+            path.join(BASE_DIR, "memreduct.exe"),
+            path.join(BASE_DIR, "MemReduct", "memreduct.exe")
+        ];
+        for (const c of candidates) if (c && fs.existsSync(c)) return c;
+        return null;
+    }
+
+    async function downloadAndInstallMemReduct() {
+        if (process.platform !== 'win32') return null;
+        const setupUrl = "https://github.com/henrypp/memreduct/releases/download/v.3.5.2/memreduct-3.5.2-setup.exe";
+        const outSetup = path.join(BASE_DIR, "memreduct-setup.exe");
+        
+        try {
+            console.log("[MemReduct] Attempting quick download (15s timeout)...");
+            
+            // Download with proper file handling and timeout
+            await Promise.race([
+                new Promise((resolve, reject) => {
+                    const file = fs.createWriteStream(outSetup);
+                    let followedRedirects = 0;
+                    const maxRedirects = 5;
+                    
+                    const request = (url) => {
+                        const req = https.get(url, { timeout: 15000 }, res => {
+                            if (res.statusCode === 302 || res.statusCode === 301) {
+                                followedRedirects++;
+                                if (followedRedirects > maxRedirects) {
+                                    file.close();
+                                    try { fs.unlinkSync(outSetup); } catch {}
+                                    return reject(new Error('Too many redirects'));
+                                }
+                                file.close();
+                                try { fs.unlinkSync(outSetup); } catch {}
+                                return request(res.headers.location);
+                            }
+                            if (res.statusCode !== 200) {
+                                file.close();
+                                try { fs.unlinkSync(outSetup); } catch {}
+                                return reject(new Error(`HTTP ${res.statusCode}`));
+                            }
+                            // Pipe response to file
+                            res.pipe(file);
+                            // Wait for file stream to finish writing
+                            file.on('finish', () => {
+                                file.close(() => {
+                                    console.log("[MemReduct] Download complete");
+                                    resolve();
+                                });
+                            });
+                            file.on('error', err => {
+                                file.close();
+                                try { fs.unlinkSync(outSetup); } catch {}
+                                reject(err);
+                            });
+                        });
+                        req.on('error', err => {
+                            file.close();
+                            try { fs.unlinkSync(outSetup); } catch {}
+                            reject(err);
+                        });
+                        req.on('timeout', () => {
+                            req.destroy();
+                            file.close();
+                            try { fs.unlinkSync(outSetup); } catch {}
+                            reject(new Error('Download timeout'));
+                        });
+                    };
+                    request(setupUrl);
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Overall timeout')), 20000))
+            ]);
+            
+            // Verify file was downloaded
+            if (!fs.existsSync(outSetup) || fs.statSync(outSetup).size === 0) {
+                console.log("[MemReduct] Download failed - file is empty or missing");
+                try { fs.unlinkSync(outSetup); } catch {}
+                return null;
+            }
+            
+            console.log("[MemReduct] Installing silently...");
+            
+            // Try silent install
+            const silentArgs = [["/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES"], ["/S"]];
+            for (const args of silentArgs) {
+                try {
+                    const child = spawn(outSetup, args, { stdio: "ignore", detached: true });
+                    child.unref();
+                    await new Promise(resolve => setTimeout(resolve, 4000));
+                    const found = findMemReductExecutable();
+                    if (found) {
+                        memreductPath = found;
+                        console.log("[MemReduct] ✓ Installed successfully");
+                        try { fs.unlinkSync(outSetup); } catch {}
+                        return memreductPath;
+                    }
+                } catch (e) {}
+            }
+            
+            console.log("[MemReduct] Installer may need manual confirmation");
+            return null;
+        } catch (e) {
+            console.log("[MemReduct] Auto-install failed:", e.message);
+            try { if (fs.existsSync(outSetup)) fs.unlinkSync(outSetup); } catch {}
+            return null;
+        }
+    }
+
+    function openMemReductGui(memPath) {
+        try {
+            if (!memPath) memPath = findMemReductExecutable();
+            if (!memPath) return false;
+            const proc = spawn(memPath, [], { stdio: "ignore", detached: true });
+            proc.unref();
+            memreductPath = memPath;
+            console.log("[MemReduct] GUI opened at", memPath);
+            return true;
+        } catch (e) {
+            console.log("[MemReduct] Failed to open GUI:", e.message);
+            return false;
+        }
+    }
+
+    function runMemReductClean(memPath) {
+        try {
+            if (!memPath) memPath = memreductPath || findMemReductExecutable();
+            if (!memPath) return false;
+            const attempts = [["--clean"], ["/clean"]];
+            for (const args of attempts) {
+                try {
+                    execSync(`"${memPath}" ${args.join(" ")}`, { stdio: 'ignore', timeout: 3000 });
+                    console.log("[MemReduct] Clean triggered");
+                    return true;
+                } catch (e) {}
+            }
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // ----------------- Tor multi-instance manager -----------------
+    function findTorBinary() {
+        if (!torInfo || !torInfo.torPath) return null;
+        return torInfo.torPath;
+    }
+
+    function startTorInstances(count, basePort = 9050) {
+        const torBin = findTorBinary();
+        if (!torBin) {
+            console.log("[Tor] Tor binary missing; cannot start proxies.");
+            return [];
+        }
+        const started = [];
+        for (let i = 0; i < count; i++) {
+            const port = basePort + i;
+            const dataDir = path.join(torInfo.torDir || BASE_DIR, `data_tor_${port}`);
+            try { if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
+            try {
+                const args = ["--SocksPort", `${port}`, "--Log", "notice stdout", "--DataDirectory", dataDir];
+                const proc = spawn(torBin, args, { stdio: "ignore" });
+                childProcesses.tor.push({ port, proc, dataDir });
+                started.push({ port, proc, dataDir });
+                console.log(`[Tor] Started on port ${port}`);
+            } catch (e) {
+                console.log("[Tor] Failed to start on port", port);
+            }
+        }
+        return started;
+    }
+
+    function killProcessTree(pid) {
+        try {
+            if (!pid) return;
+            if (process.platform === 'win32') {
+                try {
+                    execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
+                } catch (e) {
+                    try { process.kill(pid); } catch {}
+                }
+            } else {
+                try {
+                    process.kill(pid, 'SIGTERM');
+                    setTimeout(() => {
+                        try { process.kill(pid, 'SIGKILL'); } catch (e) {}
+                    }, 1000);
+                } catch (e) {}
+            }
+        } catch (e) {}
+    }
+
+    function reduceMemory(pid) {
+        if (process.platform === 'win32' && pid) {
+            try {
+                exec(`powershell -Command "$p = Get-Process -Id ${pid} -EA SilentlyContinue; if($p){$p.MinWorkingSet = 0}"`, { 
+                    stdio: 'ignore', 
+                    timeout: 2000 
+                });
+            } catch (e) {}
+        }
+    }
+
+    // ----------------- ULTRA OPTIMIZED Bot runtime -----------------
+    async function runBot(index, url, proxyPort = null) {
+        let botAds = 0;
+        while (!shuttingDown) {
+            let browser = null;
+            let page = null;
+            try {
+                const chromePath = findChrome();
+                if (!chromePath) {
+                    console.log(t.chrome_missing);
+                    await new Promise(r => setTimeout(r, 5000));
+                    continue;
+                }
+
+                // Ultra-minimal flags for stability and low resource usage
+                const launchArgs = [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--mute-audio",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
+                    "--disable-extensions",
+                    "--disable-background-networking",
+                    "--disable-default-apps",
+                    "--disable-sync",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--window-size=640,480",
+                    "--window-position=0,0",
+                    "--aggressive-cache-discard",
+                    "--disable-cache",
+                    "--disable-application-cache",
+                    "--disable-offline-load-stale-cache",
+                    "--disk-cache-size=0",
+                    "--memory-pressure-off"
+                ];
+
+                if (proxyPort) launchArgs.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
+
+                const profileDir = path.join(PROFILES_DIR, `bot_${index}`);
+
+                browser = await puppeteer.launch({
+                    executablePath: chromePath,
+                    headless: "new",
+                    userDataDir: profileDir,
+                    args: launchArgs,
+                    ignoreDefaultArgs: ["--enable-automation"],
+                    defaultViewport: { width: 640, height: 480 },
+                    protocolTimeout: 120000
+                }).catch(err => {
+                    console.error(`[Bot ${index}] Launch failed:`, err.message);
+                    throw err;
+                });
+
+                if (!browser || !browser.process()) {
+                    throw new Error("Browser failed to start");
+                }
+
+                browsers.push(browser);
+                const browserPid = browser.process().pid;
+                createdBrowsersCount++;
+                console.log(`[Bot ${index}] Started (pid=${browserPid})`);
+
+                // Set low priority immediately
+                if (process.platform === 'win32') {
+                    try {
+                        execSync(`wmic process where processid=${browserPid} CALL setpriority "idle"`, { stdio: 'ignore', timeout: 2000 });
+                    } catch (e) {}
+                }
+
+                await new Promise(r => setTimeout(r, 1000));
+                if (!browser.isConnected()) throw new Error("Browser disconnected");
+
+                const pages = await browser.pages();
+                page = pages.length ? pages[0] : await browser.newPage();
+
+                // Ultra-minimal page setup
+                await page.evaluateOnNewDocument(() => {
+                    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                    Object.defineProperty(document, 'hidden', { get: () => false });
+                    Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+                });
+
+                await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40000 }).catch(() => {});
+
+                console.log(`[Bot ${index}] ${t.bot_ingame}`);
+
+                // Trigger initial memory reduction
+                reduceMemory(browserPid);
+
+                // Wait for page to stabilize
+                await new Promise(r => setTimeout(r, 3000));
+
+                let loopCount = 0;
+                let consecutiveFailures = 0;
+                
+                console.log(`[Bot ${index}] ===== AD DETECTION ACTIVE =====`);
+                
+                while (!shuttingDown) {
+                    loopCount++;
+                    
+                    // Press U key
+                    try {
+                        await page.keyboard.press('u').catch(() => {});
+                    } catch (e) {
+                        consecutiveFailures++;
+                        if (consecutiveFailures > 10) {
+                            console.log(`[Bot ${index}] Too many failures, restarting browser`);
+                            break;
+                        }
+                    }
+
+                    await new Promise(r => setTimeout(r, 800));
+
+                    // IMPROVED AD DETECTION - Using inline style.display (faster and more reliable)
+                    let adPlaying = false;
+                    let detectionMethod = 'none';
+                    
+                    try {
+                        const result = await Promise.race([
+                            page.evaluate(() => {
+                                // Method 1: Check preroll element inline style (most reliable)
+                                const preroll = document.getElementById('preroll');
+                                if (preroll && preroll.style.display !== 'none') {
+                                    // Double-check with nested pause indicator
+                                    const pauseIndicator = document.querySelector('#preroll>span>span>span>div>div>span');
+                                    if (pauseIndicator && pauseIndicator.style.display !== 'none') {
+                                        return { playing: true, method: 'preroll_paused', info: 'ad_paused' };
+                                    }
+                                    return { playing: true, method: 'preroll', info: `display:${preroll.style.display}` };
+                                }
+                                
+                                // Method 2: Fallback - Check for playing videos
+                                const videos = document.querySelectorAll('video');
+                                for (let i = 0; i < videos.length; i++) {
+                                    const v = videos[i];
+                                    if (!v.paused && v.currentTime > 0 && v.duration > 0) {
+                                        return { playing: true, method: 'video', info: `t:${v.currentTime.toFixed(1)}/${v.duration.toFixed(1)}s` };
+                                    }
+                                }
+                                
+                                return { playing: false, method: 'none', info: 'no_ad' };
+                            }),
+                            new Promise(resolve => setTimeout(() => resolve({ playing: false, method: 'timeout', info: 'eval_timeout' }), 1500))
+                        ]);
+                        
+                        adPlaying = result.playing;
+                        detectionMethod = result.method;
+                        consecutiveFailures = 0;
+                        
+                        // Log every 20 checks for debugging
+                        if (loopCount % 20 === 0) {
+                            console.log(`[Bot ${index}] Loop ${loopCount}: ${result.info || detectionMethod}`);
+                        }
+                        
+                    } catch (e) {
+                        consecutiveFailures++;
+                        if (consecutiveFailures % 5 === 0) {
+                            console.log(`[Bot ${index}] Detection error (${consecutiveFailures}): ${e.message}`);
+                        }
+                    }
+
+                    if (adPlaying) {
+                        const adStartTime = Date.now();
+                        console.log(`\n[Bot ${index}] >>>>>>> AD STARTED (${detectionMethod}) <<<<<<<`);
+                        
+                        // Wait for ad to finish with improved checking
+                        let stillPlaying = true;
+                        let checkCount = 0;
+                        const maxChecks = 60; // 2 minutes max (reduced from 3)
+                        let noChangeCount = 0;
+                        
+                        while (stillPlaying && !shuttingDown && checkCount < maxChecks) {
+                            checkCount++;
+                            await new Promise(r => setTimeout(r, 2000));
+                            
+                            try {
+                                stillPlaying = await Promise.race([
+                                    page.evaluate(() => {
+                                        // Check using inline style (same as detection)
+                                        const preroll = document.getElementById('preroll');
+                                        if (!preroll || preroll.style.display === 'none') {
+                                            return false; // Ad finished
+                                        }
+                                        
+                                        // Check if video still playing
+                                        const videos = document.querySelectorAll('video');
+                                        for (const v of videos) {
+                                            if (!v.paused && v.currentTime > 0) {
+                                                return true; // Still playing
+                                            }
+                                        }
+                                        
+                                        // Preroll visible but no video playing - might be stuck
+                                        return false;
+                                    }),
+                                    new Promise(resolve => setTimeout(() => resolve(false), 1500))
+                                ]);
+                                
+                                // Safety: if ad appears stuck (no change for 30s), assume finished
+                                if (stillPlaying) {
+                                    noChangeCount++;
+                                    if (noChangeCount > 15) { // 15 checks * 2s = 30s
+                                        console.log(`[Bot ${index}] Ad appears stuck, assuming finished`);
+                                        stillPlaying = false;
+                                    }
+                                } else {
+                                    noChangeCount = 0;
+                                }
+                                
+                            } catch (e) {
+                                stillPlaying = false;
+                            }
+                        }
+                        
+                        const adDuration = Math.round((Date.now() - adStartTime) / 1000);
+                        
+                        // Only count if duration is reasonable (5-90 seconds)
+                        if (adDuration >= 5 && adDuration <= 90) {
+                            botAds++;
+                            totalAds++;
+                            
+                            console.log(`[Bot ${index}] >>>>>>> AD FINISHED (${adDuration}s) <<<<<<<`);
+                            console.log(`[Bot ${index}] Bot ads: ${botAds} | Global total: ${totalAds}`);
+                            console.log(`[Bot ${index}] Writing state to disk...\n`);
+                            
+                            writeState();
+                            
+                            // Memory cleanup after ad
+                            if (botAds % 3 === 0) reduceMemory(browserPid);
+                        } else {
+                            console.log(`[Bot ${index}] Invalid ad duration (${adDuration}s), skipping count`);
+                        }
+                        
+                        // Wait before resuming
+                        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
+                        
+                    } else {
+                        // No ad, wait before next check (reduced from 4s to 3s)
+                        await new Promise(r => setTimeout(r, 3000));
+                    }
+
+                    // Periodic memory reduction
+                    if (loopCount % 15 === 0) {
+                        reduceMemory(browserPid);
+                    }
+                }
+
+            } catch (err) {
+                try { 
+                    if (page) await page.close().catch(() => {});
+                    if (browser) await browser.close().catch(() => {}); 
+                } catch {}
+                
+                if (!shuttingDown) {
+                    console.log(`[Bot ${index}] ${t.restarting} (${err.message || err})`);
+                    await new Promise(r => setTimeout(r, 10000));
+                }
+            }
+        }
+    }
+
+    function findChrome() {
+        const paths = [
+            "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+        ];
+        return paths.find(p => fs.existsSync(p));
+    }
+
+    // ----------------- Graceful cleanup with stats -----------------
+    async function performCleanup(reason) {
+        sessionEnd = new Date();
+        const duration = Math.floor((sessionEnd - sessionStart) / 1000);
+        const hours = Math.floor(duration / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+        const seconds = duration % 60;
+
+        // Calculate approximate coins (average 0.5 coins per ad, since ads give 0.5-1.0 randomly)
+        const approximateCoins = Math.round(totalAds * 0.5 * 100) / 100; // Round to 2 decimals
+
+        const statsMessage = `**Session Statistics**
+HWID: \`${hwid}\`
+Watched Ads: **${totalAds}**
+Approximate Coins Gained: **${approximateCoins}** _(avg 0.5/ad)_
+Started: ${sessionStart.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+Ended: ${sessionEnd.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+Duration: ${hours}h ${minutes}m ${seconds}s
+Reason: ${reason}`;
+
+        sendWebhook(statsMessage, "BotManager");
+        console.log("\n" + statsMessage);
+
+        try {
+            writeState();
+            try { fs.writeFileSync(SIGNAL_FILE, reason || 'shutdown'); } catch {}
+            
+            try {
+                for (const b of browsers) {
+                    try {
+                        const pages = await b.pages();
+                        for (const p of pages) await p.close().catch(() => {});
+                        await b.close().catch(() => {});
+                    } catch (e) {}
+                }
+            } catch (e) {}
+            
+            try {
+                for (const tproc of childProcesses.tor) {
+                    if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
+                }
+            } catch (e) {}
+            
+            try { if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE); } catch {}
+            try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
+            try { if (fs.existsSync(CORE_FILE)) fs.unlinkSync(CORE_FILE); } catch {}
+            try { if (fs.existsSync(CORE_VER_FILE)) fs.unlinkSync(CORE_VER_FILE); } catch {}
+            try { if (fs.existsSync(PROFILES_DIR)) fs.rmSync(PROFILES_DIR, { recursive: true, force: true }); } catch (e) {}
+        } catch (e) {}
+    }
+
+    async function gracefulShutdown(reason) {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        console.log(`\n${t.shutting_down}${reason}`);
+        try {
+            await performCleanup(reason);
+        } catch (e) {}
+        try { await new Promise(r => setTimeout(r, 1000)); } catch {}
+        process.exit(0);
+    }
+
+    process.on('exit', (code) => {
+        try {
+            const endTime = new Date();
+            try { fs.writeFileSync(SIGNAL_FILE, `exit_code_${code}`); } catch {}
+            try {
+                for (const tproc of childProcesses.tor) {
+                    if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
+                }
+            } catch (e) {}
+            try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
+        } catch (e) {}
+    });
+
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
+    process.on("uncaughtException", err => {
+        console.error("UncaughtException:", err.stack || err);
+        gracefulShutdown("uncaughtException");
+    });
+    process.on("unhandledRejection", reason => {
+        console.error("UnhandledRejection:", reason);
+        gracefulShutdown("unhandledRejection");
+    });
+
+    // ----------------- Startup flow -----------------
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const ask = q => new Promise(r => rl.question(q, r));
+
+    console.log("========================================");
+    console.log(`   MODD.IO BOT MANAGER PRO v${VERSION}`);
+    console.log("========================================\n");
+
+    try {
+        console.log(t.hwid, hwid);
+        const inputKey = (await ask(t.enter_license)).trim().toLowerCase();
+        if (inputKey !== expectedKey) {
+            console.log("[!] ", t.invalid_license);
+            return await gracefulShutdown("invalid_license");
+        }
+        licenseVerified = true;
+        writeState();
+        console.log(t.license_verified);
+
+        let url = (await ask(t.enter_url)).trim();
+        if (!url) return await gracefulShutdown("no_url");
+        if (!url.includes("autojoin=true")) url += (url.includes("?") ? "&" : "?") + "autojoin=true";
+
+        const countRaw = (await ask(`${t.how_many_bots}30): `)).trim();
+        let botCount = Math.min(Math.max(parseInt(countRaw) || 1, 1), 60);
+        activeBotCount = botCount;
+
+        try { if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true }); } catch {}
+
+        // MemReduct: Only use if already installed, skip unreliable downloads
+        memreductPath = findMemReductExecutable();
+        
+        if (memreductPath) {
+            console.log("[MemReduct] ✓ Found at", memreductPath);
+            openMemReductGui(memreductPath);
+            memreductInterval = setInterval(() => {
+                try { runMemReductClean(memreductPath); } catch (e) {}
+            }, 5 * 60 * 1000);
+        } else {
+            console.log("[MemReduct] Not installed. Download from: https://github.com/henrypp/memreduct/releases/latest");
+            console.log("[MemReduct] (Optional - bots work fine without it!)\n");
+        }
+
+        const extraBots = Math.max(0, botCount - 5);
+        if (extraBots > 0) {
+            startTorInstances(extraBots, 9050);
+        }
+
+        try {
+            if (fs.existsSync(HELPER_FILE)) {
+                const helperProc = spawn("node", [HELPER_FILE], { stdio: "ignore" });
+                childProcesses.helper = { proc: helperProc };
+            }
+        } catch (e) {}
+
+        // Launch bots with staggered start
+        for (let i = 0; i < botCount; i++) {
+            let proxyPort = null;
+            if (i >= 5 && childProcesses.tor.length > 0) {
+                const torIdx = i - 5;
+                if (childProcesses.tor[torIdx]) proxyPort = childProcesses.tor[torIdx].port;
+                else proxyPort = childProcesses.tor[(torIdx % childProcesses.tor.length)].port;
+            }
+            runBot(i, url, proxyPort);
+            await new Promise(r => setTimeout(r, 5000));
+        }
+
+        // Interactive spawn loop
+        (async function interactiveAddLoop() {
+            while (!shuttingDown) {
+                const addRaw = (await ask("Enter additional bots to spawn (or 'q' to quit): ")).trim().toLowerCase();
+                if (addRaw === 'q' || addRaw === 'quit' || addRaw === 'exit') {
+                    await gracefulShutdown("user_quit");
+                    break;
+                }
+                const addCount = Math.min(Math.max(parseInt(addRaw) || 0, 0), 60);
+                if (addCount <= 0) {
+                    console.log("Invalid number.");
+                    continue;
+                }
+                const startIndex = activeBotCount;
+                activeBotCount += addCount;
+
+                const neededProxies = Math.max(0, activeBotCount - 5);
+                const currentProxies = childProcesses.tor.length;
+                const toStart = Math.max(0, neededProxies - currentProxies);
+                if (toStart > 0) startTorInstances(toStart, 9050 + currentProxies);
+
+                for (let i = 0; i < addCount; i++) {
+                    const idx = startIndex + i;
+                    let proxyPort = null;
+                    if (idx >= 5 && childProcesses.tor.length > 0) {
+                        const torIdx = idx - 5;
+                        if (childProcesses.tor[torIdx]) proxyPort = childProcesses.tor[torIdx].port;
+                        else proxyPort = childProcesses.tor[(torIdx % childProcesses.tor.length)].port;
+                    }
+                    runBot(idx, url, proxyPort);
+                    await new Promise(r => setTimeout(r, 5000));
+                }
+
+                console.log(`[Spawn] Added ${addCount} bots.`);
+            }
+        })();
+
+    } catch (err) {
+        console.error("Critical Error:", err.stack || err);
+        await gracefulShutdown("crash");
+    }
+};

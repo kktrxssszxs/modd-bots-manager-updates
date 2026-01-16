@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.5.8.patch-6";
+    const VERSION = "1.5.8.patch-7";
     
     // NOTE: To obfuscate this code, use: npm install -g javascript-obfuscator
     // Then run: javascript-obfuscator core_logic.js --output core_logic.obf.js --compact true --self-defending true

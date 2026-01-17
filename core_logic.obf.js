@@ -3,10 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "1.5.8.patch-8";
-
-    // NOTE: To obfuscate this code, use: npm install -g javascript-obfuscator
-    // Then run: javascript-obfuscator core_logic.js --output core_logic.obf.js --compact true --self-defending true
+    const VERSION = "1.5.8.patch-9";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -420,7 +417,7 @@ module.exports = async function main(deps) {
                         }
                     }
 
-                    await new Promise(r => setTimeout(r, 800));
+                    await new Promise(r => setTimeout(r, 300));
 
                     // IMPROVED AD DETECTION - Using inline style.display (faster and more reliable)
                     let adPlaying = false;
@@ -512,8 +509,6 @@ module.exports = async function main(deps) {
                                     noChangeCount++;
                                     if (noChangeCount > 15) { // 15 checks * 2s = 30s
                                         console.log(`[Bot ${index}] Ad appears stuck, assuming finished`);
-                                        botAds++;
-                                        totalAds++;
                                         stillPlaying = false;
                                     }
                                 } else {
@@ -528,7 +523,7 @@ module.exports = async function main(deps) {
                         const adDuration = Math.round((Date.now() - adStartTime) / 1000);
 
                         // Only count if duration is reasonable (0-90 seconds)
-                        if (adDuration >= 0 && adDuration <= 150) {
+                        if (adDuration == 0 || adDuration >= 5 && adDuration <= 150) {
                             botAds++;
                             totalAds++;
 

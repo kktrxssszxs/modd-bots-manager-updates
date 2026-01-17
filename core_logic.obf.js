@@ -3,7 +3,10 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "1.5.8.patch-9";
+    const VERSION = "1.5.9.patch-1-light";
+
+    // NOTE: To obfuscate this code, use: npm install -g javascript-obfuscator
+    // Then: javascript-obfuscator core_logic.js --output core_logic.obf.js --compact true --self-defending true
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -396,7 +399,7 @@ module.exports = async function main(deps) {
                 reduceMemory(browserPid);
 
                 // Wait for page to stabilize
-                await new Promise(r => setTimeout(r, 3000));
+                await new Promise(r => setTimeout(r, 2000));
 
                 let loopCount = 0;
                 let consecutiveFailures = 0;
@@ -406,76 +409,53 @@ module.exports = async function main(deps) {
                 while (!shuttingDown) {
                     loopCount++;
 
-                    // Press U key
-                    try {
-                        await page.keyboard.press('u').catch(() => { });
-                    } catch (e) {
-                        consecutiveFailures++;
-                        if (consecutiveFailures > 10) {
-                            console.log(`[Bot ${index}] Too many failures, restarting browser`);
-                            break;
+                    // Press U key less frequently
+                    if (loopCount % 3 === 0) {
+                        try {
+                            await page.keyboard.press('u').catch(() => { });
+                        } catch (e) {
+                            consecutiveFailures++;
+                            if (consecutiveFailures > 15) {
+                                console.log(`[Bot ${index}] Too many failures, restarting browser`);
+                                break;
+                            }
                         }
                     }
 
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, 500));
 
-                    // IMPROVED AD DETECTION - Using inline style.display (faster and more reliable)
+                    // ULTRA-FAST AD DETECTION - Using ONLY inline style.display
                     let adPlaying = false;
-                    let detectionMethod = 'none';
 
                     try {
-                        const result = await Promise.race([
+                        adPlaying = await Promise.race([
                             page.evaluate(() => {
-                                // Method 1: Check preroll element inline style (most reliable)
                                 const preroll = document.getElementById('preroll');
-                                if (preroll && preroll.style.display !== 'none') {
-                                    // Double-check with nested pause indicator
-                                    const pauseIndicator = document.querySelector('#preroll>span>span>span>div>div>span');
-                                    if (pauseIndicator && pauseIndicator.style.display !== 'none') {
-                                        return { playing: true, method: 'preroll_paused', info: 'ad_paused' };
-                                    }
-                                    return { playing: true, method: 'preroll', info: `display:${preroll.style.display}` };
-                                }
-
-                                // Method 2: Fallback - Check for playing videos
-                                const videos = document.querySelectorAll('video');
-                                for (let i = 0; i < videos.length; i++) {
-                                    const v = videos[i];
-                                    if (!v.paused && v.currentTime > 0 && v.duration > 0) {
-                                        return { playing: true, method: 'video', info: `t:${v.currentTime.toFixed(1)}/${v.duration.toFixed(1)}s` };
-                                    }
-                                }
-
-                                return { playing: false, method: 'none', info: 'no_ad' };
+                                // Simple check: if preroll exists and display is not 'none', ad is playing
+                                return preroll && preroll.style.display !== 'none';
                             }),
-                            new Promise(resolve => setTimeout(() => resolve({ playing: false, method: 'timeout', info: 'eval_timeout' }), 1500))
+                            new Promise(resolve => setTimeout(() => resolve(false), 1000))
                         ]);
-
-                        adPlaying = result.playing;
-                        detectionMethod = result.method;
                         consecutiveFailures = 0;
 
-                        // Log every 20 checks for debugging
-                        if (loopCount % 20 === 0) {
-                            console.log(`[Bot ${index}] Loop ${loopCount}: ${result.info || detectionMethod}`);
+                        // Debug log every 30 checks
+                        if (loopCount % 30 === 0) {
+                            console.log(`[Bot ${index}] Check ${loopCount}: ${adPlaying ? 'AD_PLAYING' : 'no_ad'}`);
                         }
 
                     } catch (e) {
                         consecutiveFailures++;
-                        if (consecutiveFailures % 5 === 0) {
-                            console.log(`[Bot ${index}] Detection error (${consecutiveFailures}): ${e.message}`);
-                        }
+                        adPlaying = false;
                     }
 
                     if (adPlaying) {
                         const adStartTime = Date.now();
-                        console.log(`\n[Bot ${index}] >>>>>>> AD STARTED (${detectionMethod}) <<<<<<<`);
+                        console.log(`\n[Bot ${index}] >>>>>>> AD STARTED <<<<<<<`);
 
-                        // Wait for ad to finish with improved checking
+                        // Wait for ad to finish - simple loop
                         let stillPlaying = true;
                         let checkCount = 0;
-                        const maxChecks = 60; // 2 minutes max (reduced from 3)
-                        let noChangeCount = 0;
+                        const maxChecks = 45; // 90 seconds max (45 * 2s)
 
                         while (stillPlaying && !shuttingDown && checkCount < maxChecks) {
                             checkCount++;
@@ -484,76 +464,66 @@ module.exports = async function main(deps) {
                             try {
                                 stillPlaying = await Promise.race([
                                     page.evaluate(() => {
-                                        // Check using inline style (same as detection)
                                         const preroll = document.getElementById('preroll');
-                                        if (!preroll || preroll.style.display === 'none') {
-                                            return false; // Ad finished
-                                        }
-
-                                        // Check if video still playing
-                                        const videos = document.querySelectorAll('video');
-                                        for (const v of videos) {
-                                            if (!v.paused && v.currentTime > 0) {
-                                                return true; // Still playing
-                                            }
-                                        }
-
-                                        // Preroll visible but no video playing - might be stuck
-                                        return false;
+                                        // Ad still playing if preroll exists and display is not 'none'
+                                        return preroll && preroll.style.display !== 'none';
                                     }),
-                                    new Promise(resolve => setTimeout(() => resolve(false), 1500))
+                                    new Promise(resolve => setTimeout(() => resolve(false), 1000))
                                 ]);
-
-                                // Safety: if ad appears stuck (no change for 30s), assume finished
-                                if (stillPlaying) {
-                                    noChangeCount++;
-                                    if (noChangeCount > 15) { // 15 checks * 2s = 30s
-                                        console.log(`[Bot ${index}] Ad appears stuck, assuming finished`);
-                                        stillPlaying = false;
-                                    }
-                                } else {
-                                    noChangeCount = 0;
-                                }
-
                             } catch (e) {
                                 stillPlaying = false;
+                            }
+
+                            // If ad appears to finish very quickly, might be a false positive
+                            if (!stillPlaying && checkCount < 3) {
+                                await new Promise(r => setTimeout(r, 1000));
+                                // Re-check
+                                try {
+                                    stillPlaying = await page.evaluate(() => {
+                                        const preroll = document.getElementById('preroll');
+                                        return preroll && preroll.style.display !== 'none';
+                                    });
+                                } catch (e) {
+                                    stillPlaying = false;
+                                }
                             }
                         }
 
                         const adDuration = Math.round((Date.now() - adStartTime) / 1000);
 
-                        // Only count if duration is reasonable (0-90 seconds)
-                        if (adDuration == 0 || adDuration >= 5 && adDuration <= 150) {
-                            botAds++;
-                            totalAds++;
+                        // Count all ads (removed duration validation - sometimes ads are very short)
+                        botAds++;
+                        totalAds++;
 
-                            console.log(`[Bot ${index}] >>>>>>> AD FINISHED (${adDuration}s) <<<<<<<`);
-                            console.log(`[Bot ${index}] Bot ads: ${botAds} | Global total: ${totalAds}`);
-                            console.log(`[Bot ${index}] Writing state to disk...\n`);
+                        console.log(`[Bot ${index}] >>>>>>> AD FINISHED (${adDuration}s) <<<<<<<`);
+                        console.log(`[Bot ${index}] Bot ads: ${botAds} | Global total: ${totalAds}\n`);
 
-                            writeState();
+                        writeState();
 
-                            // Memory cleanup after ad
-                            if (botAds % 3 === 0) reduceMemory(browserPid);
-                        } else {
-                            console.log(`[Bot ${index}] Invalid ad duration (${adDuration}s), skipping count`);
-                        }
+                        // Memory cleanup
+                        if (botAds % 3 === 0) reduceMemory(browserPid);
 
-                        // Wait before resuming
-                        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
+                        // Short wait before resuming
+                        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
 
                     } else {
-                        // No ad, wait before next check (reduced from 4s to 3s)
-                        await new Promise(r => setTimeout(r, 3000));
+                        // No ad detected, quick wait (reduced from 3s to 1.5s)
+                        await new Promise(r => setTimeout(r, 1500));
                     }
 
                     // Periodic memory reduction
-                    if (loopCount % 15 === 0) {
+                    if (loopCount % 20 === 0) {
                         reduceMemory(browserPid);
                     }
                 }
 
-            } catch (err) {
+                // Periodic memory reduction
+                if (loopCount % 15 === 0) {
+                    reduceMemory(browserPid);
+                }
+            }
+
+            catch (err) {
                 try {
                     if (page) await page.close().catch(() => { });
                     if (browser) await browser.close().catch(() => { });
@@ -584,13 +554,13 @@ module.exports = async function main(deps) {
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = duration % 60;
 
-        // Calculate approximate coins (average 0.5 coins per ad, since ads give 0.5-1.0 randomly)
-        const approximateCoins = Math.round(totalAds * 0.5 * 100) / 100; // Round to 2 decimals
+        // Calculate approximate coins (average 0.75 coins per ad, since ads give 0.5-1.0 randomly)
+        const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100; // Round to 2 decimals
 
         const statsMessage = `**Session Statistics**
 HWID: \`${hwid}\`
 Watched Ads: **${totalAds}**
-Approximate Coins Gained: **${approximateCoins}** _(avg 0.5/ad)_
+Approximate Coins Gained: **${approximateCoins}** _(avg 0.75/ad)_
 Started: ${sessionStart.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
 Ended: ${sessionEnd.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
 Duration: ${hours}h ${minutes}m ${seconds}s

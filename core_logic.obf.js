@@ -3,8 +3,8 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.6.0.aggressive";
-
+    const VERSION = "1.5.8.ultra-fast";
+    
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -117,6 +117,7 @@ module.exports = async function main(deps) {
         try {
             console.log("[MemReduct] Attempting quick download (15s timeout)...");
             
+            // Download with proper file handling and timeout
             await Promise.race([
                 new Promise((resolve, reject) => {
                     const file = fs.createWriteStream(outSetup);
@@ -173,6 +174,7 @@ module.exports = async function main(deps) {
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Overall timeout')), 20000))
             ]);
             
+            // Verify file was downloaded
             if (!fs.existsSync(outSetup) || fs.statSync(outSetup).size === 0) {
                 console.log("[MemReduct] Download failed - file is empty or missing");
                 try { fs.unlinkSync(outSetup); } catch {}
@@ -181,6 +183,7 @@ module.exports = async function main(deps) {
             
             console.log("[MemReduct] Installing silently...");
             
+            // Try silent install
             const silentArgs = [["/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES"], ["/S"]];
             for (const args of silentArgs) {
                 try {
@@ -314,6 +317,7 @@ module.exports = async function main(deps) {
                     continue;
                 }
 
+                // Ultra-minimal flags for stability and low resource usage
                 const launchArgs = [
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
@@ -377,6 +381,7 @@ module.exports = async function main(deps) {
                 const pages = await browser.pages();
                 page = pages.length ? pages[0] : await browser.newPage();
 
+                // Ultra-minimal page setup
                 await page.evaluateOnNewDocument(() => {
                     Object.defineProperty(navigator, 'webdriver', { get: () => false });
                     Object.defineProperty(document, 'hidden', { get: () => false });
@@ -388,72 +393,67 @@ module.exports = async function main(deps) {
 
                 console.log(`[Bot ${index}] ${t.bot_ingame}`);
 
+                // Trigger initial memory reduction
                 reduceMemory(browserPid);
 
+                // Wait for page to stabilize
                 await new Promise(r => setTimeout(r, 2000));
 
                 let loopCount = 0;
-                let consecutiveNoAds = 0;
-                let adsWatchedSinceRefresh = 0;
+                let consecutiveFailures = 0;
                 
                 console.log(`[Bot ${index}] ===== AD DETECTION ACTIVE =====`);
                 
                 while (!shuttingDown) {
                     loopCount++;
                     
-                    // Press U occasionally
-                    if (loopCount % 2 === 0) {
+                    // Press U key less frequently
+                    if (loopCount % 3 === 0) {
                         try {
                             await page.keyboard.press('u').catch(() => {});
-                        } catch (e) {}
+                        } catch (e) {
+                            consecutiveFailures++;
+                            if (consecutiveFailures > 15) {
+                                console.log(`[Bot ${index}] Too many failures, restarting browser`);
+                                break;
+                            }
+                        }
                     }
 
-                    await new Promise(r => setTimeout(r, 400));
+                    await new Promise(r => setTimeout(r, 500));
 
+                    // ULTRA-FAST AD DETECTION - Using ONLY inline style.display
                     let adPlaying = false;
                     
                     try {
                         adPlaying = await Promise.race([
                             page.evaluate(() => {
-                                const el = document.getElementById('preroll');
-                                return !!(el && el.style.display !== 'none');
+                                const preroll = document.getElementById('preroll');
+                                // Simple check: if preroll exists and display is not 'none', ad is playing
+                                return preroll && preroll.style.display !== 'none';
                             }),
-                            new Promise(resolve => setTimeout(() => resolve(false), 800))
+                            new Promise(resolve => setTimeout(() => resolve(false), 1000))
                         ]);
+                        consecutiveFailures = 0;
                         
-                        if (!adPlaying) {
-                            consecutiveNoAds++;
-                        } else {
-                            consecutiveNoAds = 0;
+                        // Debug log every 30 checks
+                        if (loopCount % 30 === 0) {
+                            console.log(`[Bot ${index}] Check ${loopCount}: ${adPlaying ? 'AD_PLAYING' : 'no_ad'}`);
                         }
                         
                     } catch (e) {
-                        consecutiveNoAds++;
+                        consecutiveFailures++;
                         adPlaying = false;
-                    }
-
-                    // PAGE RECOVERY
-                    if (consecutiveNoAds > 200 || adsWatchedSinceRefresh > 50) {
-                        console.log(`[Bot ${index}] Refreshing page (no ads: ${consecutiveNoAds}, watched: ${adsWatchedSinceRefresh})`);
-                        try {
-                            await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
-                            await new Promise(r => setTimeout(r, 3000));
-                            consecutiveNoAds = 0;
-                            adsWatchedSinceRefresh = 0;
-                            console.log(`[Bot ${index}] Page refreshed successfully`);
-                        } catch (e) {
-                            console.log(`[Bot ${index}] Refresh failed, restarting browser`);
-                            break;
-                        }
                     }
 
                     if (adPlaying) {
                         const adStartTime = Date.now();
-                        console.log(`\n[Bot ${index}] >>> AD STARTED <<<`);
+                        console.log(`\n[Bot ${index}] >>>>>>> AD STARTED <<<<<<<`);
                         
+                        // Wait for ad to finish - simple loop
                         let stillPlaying = true;
                         let checkCount = 0;
-                        const maxChecks = 60; // 2 minutes
+                        const maxChecks = 45; // 90 seconds max (45 * 2s)
                         
                         while (stillPlaying && !shuttingDown && checkCount < maxChecks) {
                             checkCount++;
@@ -462,40 +462,55 @@ module.exports = async function main(deps) {
                             try {
                                 stillPlaying = await Promise.race([
                                     page.evaluate(() => {
-                                        const el = document.getElementById('preroll');
-                                        return !!(el && el.style.display !== 'none');
+                                        const preroll = document.getElementById('preroll');
+                                        // Ad still playing if preroll exists and display is not 'none'
+                                        return preroll && preroll.style.display !== 'none';
                                     }),
-                                    new Promise(resolve => setTimeout(() => resolve(false), 800))
+                                    new Promise(resolve => setTimeout(() => resolve(false), 1000))
                                 ]);
                             } catch (e) {
                                 stillPlaying = false;
+                            }
+                            
+                            // If ad appears to finish very quickly, might be a false positive
+                            if (!stillPlaying && checkCount < 3) {
+                                await new Promise(r => setTimeout(r, 1000));
+                                // Re-check
+                                try {
+                                    stillPlaying = await page.evaluate(() => {
+                                        const preroll = document.getElementById('preroll');
+                                        return preroll && preroll.style.display !== 'none';
+                                    });
+                                } catch (e) {
+                                    stillPlaying = false;
+                                }
                             }
                         }
                         
                         const adDuration = Math.round((Date.now() - adStartTime) / 1000);
                         
+                        // Count all ads (removed duration validation - sometimes ads are very short)
                         botAds++;
                         totalAds++;
-                        adsWatchedSinceRefresh++;
-                        consecutiveNoAds = 0;
                         
-                        console.log(`[Bot ${index}] >>> AD DONE (${adDuration}s) | Bot: ${botAds} | Total: ${totalAds} <<<\n`);
+                        console.log(`[Bot ${index}] >>>>>>> AD FINISHED (${adDuration}s) <<<<<<<`);
+                        console.log(`[Bot ${index}] Bot ads: ${botAds} | Global total: ${totalAds}\n`);
                         
                         writeState();
                         
                         // Memory cleanup
-                        if (botAds % 5 === 0) {
-                            reduceMemory(browserPid);
-                        }
+                        if (botAds % 3 === 0) reduceMemory(browserPid);
                         
-                        await new Promise(r => setTimeout(r, 800 + Math.random() * 700));
+                        // Short wait before resuming
+                        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
                         
                     } else {
-                        await new Promise(r => setTimeout(r, 1000));
+                        // No ad detected, quick wait (reduced from 3s to 1.5s)
+                        await new Promise(r => setTimeout(r, 1500));
                     }
 
-                    // Periodic memory cleanup
-                    if (loopCount % 30 === 0) {
+                    // Periodic memory reduction
+                    if (loopCount % 20 === 0) {
                         reduceMemory(browserPid);
                     }
                 }
@@ -529,7 +544,7 @@ module.exports = async function main(deps) {
         return paths.find(p => fs.existsSync(p));
     }
 
-    // ----------------- cleanup with stats -----------------
+    // ----------------- Graceful cleanup with stats -----------------
     async function performCleanup(reason) {
         sessionEnd = new Date();
         const duration = Math.floor((sessionEnd - sessionStart) / 1000);
@@ -537,7 +552,8 @@ module.exports = async function main(deps) {
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = duration % 60;
 
-        const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100;
+        // Calculate approximate coins (average 0.75 coins per ad, since ads give 0.5-1.0 randomly)
+        const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100; // Round to 2 decimals
 
         const statsMessage = `**Session Statistics**
 HWID: \`${hwid}\`
@@ -639,12 +655,22 @@ Reason: ${reason}`;
         if (!url.includes("autojoin=true")) url += (url.includes("?") ? "&" : "?") + "autojoin=true";
 
         const countRaw = (await ask(`${t.how_many_bots}30): `)).trim();
-        let botCount = Math.min(Math.max(parseInt(countRaw) || 1, 1), 60);
+        let botCount = parseInt(countRaw);
+        
+        if (isNaN(botCount) || botCount < 1) {
+            botCount = 1;
+            console.log("Invalid input, defaulting to 1 bot.");
+        } else if (botCount > 60) {
+            botCount = 60;
+            console.log("Too many bots requested, capping at 60.");
+        }
+        
+        console.log(`[*] Will launch ${botCount} bot(s).\n`);
         activeBotCount = botCount;
 
         try { if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true }); } catch {}
 
-        // only use if avaliable
+        // MemReduct: Only use if already installed, skip unreliable downloads
         memreductPath = findMemReductExecutable();
         
         if (memreductPath) {
@@ -670,7 +696,7 @@ Reason: ${reason}`;
             }
         } catch (e) {}
 
-        // staggered start launch
+        // Launch bots with staggered start
         for (let i = 0; i < botCount; i++) {
             let proxyPort = null;
             if (i >= 5 && childProcesses.tor.length > 0) {
@@ -682,40 +708,64 @@ Reason: ${reason}`;
             await new Promise(r => setTimeout(r, 5000));
         }
 
-        // spawn loop
+        // Interactive spawn loop
         (async function interactiveAddLoop() {
             while (!shuttingDown) {
-                const addRaw = (await ask("Enter additional bots to spawn (or 'q' to quit): ")).trim().toLowerCase();
-                if (addRaw === 'q' || addRaw === 'quit' || addRaw === 'exit') {
-                    await gracefulShutdown("user_quit");
-                    break;
-                }
-                const addCount = Math.min(Math.max(parseInt(addRaw) || 0, 0), 60);
-                if (addCount <= 0) {
-                    console.log("Invalid number.");
-                    continue;
-                }
-                const startIndex = activeBotCount;
-                activeBotCount += addCount;
-
-                const neededProxies = Math.max(0, activeBotCount - 5);
-                const currentProxies = childProcesses.tor.length;
-                const toStart = Math.max(0, neededProxies - currentProxies);
-                if (toStart > 0) startTorInstances(toStart, 9050 + currentProxies);
-
-                for (let i = 0; i < addCount; i++) {
-                    const idx = startIndex + i;
-                    let proxyPort = null;
-                    if (idx >= 5 && childProcesses.tor.length > 0) {
-                        const torIdx = idx - 5;
-                        if (childProcesses.tor[torIdx]) proxyPort = childProcesses.tor[torIdx].port;
-                        else proxyPort = childProcesses.tor[(torIdx % childProcesses.tor.length)].port;
+                try {
+                    const addRaw = (await ask("Enter additional bots to spawn (or 'q' to quit): ")).trim().toLowerCase();
+                    
+                    if (addRaw === 'q' || addRaw === 'quit' || addRaw === 'exit') {
+                        await gracefulShutdown("user_quit");
+                        break;
                     }
-                    runBot(idx, url, proxyPort);
-                    await new Promise(r => setTimeout(r, 5000));
-                }
+                    
+                    if (addRaw === '') {
+                        continue; // Ignore empty input
+                    }
+                    
+                    const addCount = parseInt(addRaw);
+                    if (isNaN(addCount) || addCount <= 0 || addCount > 60) {
+                        console.log("Invalid number. Enter 1-60 or 'q' to quit.");
+                        continue;
+                    }
+                    
+                    const startIndex = activeBotCount;
+                    activeBotCount += addCount;
 
-                console.log(`[Spawn] Added ${addCount} bots.`);
+                    // Calculate how many NEW Tor instances we need
+                    const totalNeededProxies = Math.max(0, activeBotCount - 5);
+                    const currentProxies = childProcesses.tor.length;
+                    const toStart = Math.max(0, totalNeededProxies - currentProxies);
+                    
+                    if (toStart > 0) {
+                        console.log(`[Tor] Starting ${toStart} additional Tor instances...`);
+                        startTorInstances(toStart, 9050 + currentProxies);
+                    }
+
+                    console.log(`[Spawn] Launching ${addCount} bots (indices ${startIndex}-${startIndex + addCount - 1})...`);
+                    
+                    for (let i = 0; i < addCount; i++) {
+                        const idx = startIndex + i;
+                        let proxyPort = null;
+                        
+                        // Only assign proxy if bot index >= 5
+                        if (idx >= 5 && childProcesses.tor.length > 0) {
+                            const torIdx = idx - 5;
+                            if (childProcesses.tor[torIdx]) {
+                                proxyPort = childProcesses.tor[torIdx].port;
+                            } else {
+                                proxyPort = childProcesses.tor[torIdx % childProcesses.tor.length].port;
+                            }
+                        }
+                        
+                        runBot(idx, url, proxyPort);
+                        await new Promise(r => setTimeout(r, 5000));
+                    }
+
+                    console.log(`[Spawn] ✓ Added ${addCount} bots successfully.\n`);
+                } catch (e) {
+                    console.log("[Spawn] Error:", e.message);
+                }
             }
         })();
 

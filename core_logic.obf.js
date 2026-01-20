@@ -1,9 +1,9 @@
 module.exports = async function main(deps) {
     const { fs, path, crypto, readline, os, spawn, puppeteer, machineIdSync, https, execSync, exec, torInfo } = deps;
 
-    try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
+    try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "1.6.0.minimal";
+    const VERSION = "1.6.1.stable";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -60,7 +60,7 @@ module.exports = async function main(deps) {
     const secret = "6d0bf452576104c57b41985b00b1d57b10ba686bbb0c262a8922c6606a6e10cd";
     const expectedKey = crypto.createHmac('sha256', secret).update(hwid).digest('hex').substring(0, 12);
 
-    try { fs.writeFileSync(PID_FILE, process.pid.toString()); } catch {}
+    try { fs.writeFileSync(PID_FILE, process.pid.toString()); } catch { }
 
     function writeState() {
         const state = {
@@ -70,7 +70,7 @@ module.exports = async function main(deps) {
             start: sessionStart.toISOString(),
             activeBots: activeBotCount
         };
-        try { fs.writeFileSync(STATE_FILE, JSON.stringify(state)); } catch {}
+        try { fs.writeFileSync(STATE_FILE, JSON.stringify(state)); } catch { }
     }
 
     function sendWebhook(message, username = "BotManager", embed = null) {
@@ -88,11 +88,11 @@ module.exports = async function main(deps) {
                     "Content-Length": Buffer.byteLength(body)
                 }
             };
-            const req = https.request(options, res => { res.on("data", () => {}); });
-            req.on("error", () => {});
+            const req = https.request(options, res => { res.on("data", () => { }); });
+            req.on("error", () => { });
             req.write(body);
             req.end();
-        } catch (e) {}
+        } catch (e) { }
     }
 
     // ----------------- MemReduct with redirect handling -----------------
@@ -112,33 +112,33 @@ module.exports = async function main(deps) {
         if (process.platform !== 'win32') return null;
         const setupUrl = "https://github.com/henrypp/memreduct/releases/download/v.3.5.2/memreduct-3.5.2-setup.exe";
         const outSetup = path.join(BASE_DIR, "memreduct-setup.exe");
-        
+
         try {
             console.log("[MemReduct] Attempting quick download (15s timeout)...");
-            
+
             // Download with proper file handling and timeout
             await Promise.race([
                 new Promise((resolve, reject) => {
                     const file = fs.createWriteStream(outSetup);
                     let followedRedirects = 0;
                     const maxRedirects = 5;
-                    
+
                     const request = (url) => {
                         const req = https.get(url, { timeout: 15000 }, res => {
                             if (res.statusCode === 302 || res.statusCode === 301) {
                                 followedRedirects++;
                                 if (followedRedirects > maxRedirects) {
                                     file.close();
-                                    try { fs.unlinkSync(outSetup); } catch {}
+                                    try { fs.unlinkSync(outSetup); } catch { }
                                     return reject(new Error('Too many redirects'));
                                 }
                                 file.close();
-                                try { fs.unlinkSync(outSetup); } catch {}
+                                try { fs.unlinkSync(outSetup); } catch { }
                                 return request(res.headers.location);
                             }
                             if (res.statusCode !== 200) {
                                 file.close();
-                                try { fs.unlinkSync(outSetup); } catch {}
+                                try { fs.unlinkSync(outSetup); } catch { }
                                 return reject(new Error(`HTTP ${res.statusCode}`));
                             }
                             // Pipe response to file
@@ -152,19 +152,19 @@ module.exports = async function main(deps) {
                             });
                             file.on('error', err => {
                                 file.close();
-                                try { fs.unlinkSync(outSetup); } catch {}
+                                try { fs.unlinkSync(outSetup); } catch { }
                                 reject(err);
                             });
                         });
                         req.on('error', err => {
                             file.close();
-                            try { fs.unlinkSync(outSetup); } catch {}
+                            try { fs.unlinkSync(outSetup); } catch { }
                             reject(err);
                         });
                         req.on('timeout', () => {
                             req.destroy();
                             file.close();
-                            try { fs.unlinkSync(outSetup); } catch {}
+                            try { fs.unlinkSync(outSetup); } catch { }
                             reject(new Error('Download timeout'));
                         });
                     };
@@ -172,16 +172,16 @@ module.exports = async function main(deps) {
                 }),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Overall timeout')), 20000))
             ]);
-            
+
             // Verify file was downloaded
             if (!fs.existsSync(outSetup) || fs.statSync(outSetup).size === 0) {
                 console.log("[MemReduct] Download failed - file is empty or missing");
-                try { fs.unlinkSync(outSetup); } catch {}
+                try { fs.unlinkSync(outSetup); } catch { }
                 return null;
             }
-            
+
             console.log("[MemReduct] Installing silently...");
-            
+
             // Try silent install
             const silentArgs = [["/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES"], ["/S"]];
             for (const args of silentArgs) {
@@ -193,17 +193,17 @@ module.exports = async function main(deps) {
                     if (found) {
                         memreductPath = found;
                         console.log("[MemReduct] ✓ Installed successfully");
-                        try { fs.unlinkSync(outSetup); } catch {}
+                        try { fs.unlinkSync(outSetup); } catch { }
                         return memreductPath;
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
-            
+
             console.log("[MemReduct] Installer may need manual confirmation");
             return null;
         } catch (e) {
             console.log("[MemReduct] Auto-install failed:", e.message);
-            try { if (fs.existsSync(outSetup)) fs.unlinkSync(outSetup); } catch {}
+            try { if (fs.existsSync(outSetup)) fs.unlinkSync(outSetup); } catch { }
             return null;
         }
     }
@@ -233,7 +233,7 @@ module.exports = async function main(deps) {
                     execSync(`"${memPath}" ${args.join(" ")}`, { stdio: 'ignore', timeout: 3000 });
                     console.log("[MemReduct] Clean triggered");
                     return true;
-                } catch (e) {}
+                } catch (e) { }
             }
             return false;
         } catch (e) {
@@ -257,7 +257,7 @@ module.exports = async function main(deps) {
         for (let i = 0; i < count; i++) {
             const port = basePort + i;
             const dataDir = path.join(torInfo.torDir || BASE_DIR, `data_tor_${port}`);
-            try { if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
+            try { if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true }); } catch (e) { }
             try {
                 const args = ["--SocksPort", `${port}`, "--Log", "notice stdout", "--DataDirectory", dataDir];
                 const proc = spawn(torBin, args, { stdio: "ignore" });
@@ -278,27 +278,27 @@ module.exports = async function main(deps) {
                 try {
                     execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
                 } catch (e) {
-                    try { process.kill(pid); } catch {}
+                    try { process.kill(pid); } catch { }
                 }
             } else {
                 try {
                     process.kill(pid, 'SIGTERM');
                     setTimeout(() => {
-                        try { process.kill(pid, 'SIGKILL'); } catch (e) {}
+                        try { process.kill(pid, 'SIGKILL'); } catch (e) { }
                     }, 1000);
-                } catch (e) {}
+                } catch (e) { }
             }
-        } catch (e) {}
+        } catch (e) { }
     }
 
     function reduceMemory(pid) {
         if (process.platform === 'win32' && pid) {
             try {
-                exec(`powershell -Command "$p = Get-Process -Id ${pid} -EA SilentlyContinue; if($p){$p.MinWorkingSet = 0}"`, { 
-                    stdio: 'ignore', 
-                    timeout: 2000 
+                exec(`powershell -Command "$p = Get-Process -Id ${pid} -EA SilentlyContinue; if($p){$p.MinWorkingSet = 0}"`, {
+                    stdio: 'ignore',
+                    timeout: 2000
                 });
-            } catch (e) {}
+            } catch (e) { }
         }
     }
 
@@ -371,7 +371,7 @@ module.exports = async function main(deps) {
                 if (process.platform === 'win32') {
                     try {
                         execSync(`wmic process where processid=${browserPid} CALL setpriority "idle"`, { stdio: 'ignore', timeout: 2000 });
-                    } catch (e) {}
+                    } catch (e) { }
                 }
 
                 await new Promise(r => setTimeout(r, 1000));
@@ -388,7 +388,7 @@ module.exports = async function main(deps) {
                 });
 
                 await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40000 }).catch(() => {});
+                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40000 }).catch(() => { });
 
                 console.log(`[Bot ${index}] ${t.bot_ingame}`);
 
@@ -399,15 +399,15 @@ module.exports = async function main(deps) {
                 await new Promise(r => setTimeout(r, 1500));
 
                 let loopCount = 0;
-                
+
                 console.log(`[Bot ${index}] ===== AD DETECTION ACTIVE =====`);
-                
+
                 while (!shuttingDown) {
                     loopCount++;
-                    
+
                     // Press U occasionally
                     if (loopCount % 5 === 0) {
-                        try { await page.keyboard.press('u').catch(() => {}); } catch (e) {}
+                        try { await page.keyboard.press('u').catch(() => { }); } catch (e) { }
                     }
 
                     // Super fast check interval
@@ -426,15 +426,15 @@ module.exports = async function main(deps) {
 
                     if (adPlaying) {
                         console.log(`[Bot ${index}] >>> AD START`);
-                        
+
                         // Wait for ad to finish - simple loop
                         let watching = true;
                         let checks = 0;
-                        
+
                         while (watching && !shuttingDown && checks < 60) {
                             checks++;
                             await new Promise(r => setTimeout(r, 1500));
-                            
+
                             try {
                                 watching = await page.evaluate(() => {
                                     const p = document.getElementById('preroll');
@@ -444,20 +444,20 @@ module.exports = async function main(deps) {
                                 watching = false;
                             }
                         }
-                        
+
                         // Count the ad
                         botAds++;
                         totalAds++;
-                        
+
                         console.log(`[Bot ${index}] >>> AD DONE | Bot: ${botAds} Total: ${totalAds}`);
                         writeState();
-                        
+
                         // Cleanup
                         if (botAds % 3 === 0) reduceMemory(browserPid);
-                        
+
                         // Quick resume
                         await new Promise(r => setTimeout(r, 500));
-                        
+
                     } else {
                         // No ad - quick wait
                         await new Promise(r => setTimeout(r, 1000));
@@ -469,18 +469,18 @@ module.exports = async function main(deps) {
                     }
                 }
 
-                    // Periodic memory reduction
-                    if (loopCount % 15 === 0) {
-                        reduceMemory(browserPid);
-                    }
+                // Periodic memory reduction
+                if (loopCount % 15 === 0) {
+                    reduceMemory(browserPid);
                 }
+            }
 
-             catch (err) {
-                try { 
-                    if (page) await page.close().catch(() => {});
-                    if (browser) await browser.close().catch(() => {}); 
-                } catch {}
-                
+            catch (err) {
+                try {
+                    if (page) await page.close().catch(() => { });
+                    if (browser) await browser.close().catch(() => { });
+                } catch { }
+
                 if (!shuttingDown) {
                     console.log(`[Bot ${index}] ${t.restarting} (${err.message || err})`);
                     await new Promise(r => setTimeout(r, 10000));
@@ -523,30 +523,30 @@ Reason: ${reason}`;
 
         try {
             writeState();
-            try { fs.writeFileSync(SIGNAL_FILE, reason || 'shutdown'); } catch {}
-            
+            try { fs.writeFileSync(SIGNAL_FILE, reason || 'shutdown'); } catch { }
+
             try {
                 for (const b of browsers) {
                     try {
                         const pages = await b.pages();
-                        for (const p of pages) await p.close().catch(() => {});
-                        await b.close().catch(() => {});
-                    } catch (e) {}
+                        for (const p of pages) await p.close().catch(() => { });
+                        await b.close().catch(() => { });
+                    } catch (e) { }
                 }
-            } catch (e) {}
-            
+            } catch (e) { }
+
             try {
                 for (const tproc of childProcesses.tor) {
                     if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
                 }
-            } catch (e) {}
-            
-            try { if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE); } catch {}
-            try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
-            try { if (fs.existsSync(CORE_FILE)) fs.unlinkSync(CORE_FILE); } catch {}
-            try { if (fs.existsSync(CORE_VER_FILE)) fs.unlinkSync(CORE_VER_FILE); } catch {}
-            try { if (fs.existsSync(PROFILES_DIR)) fs.rmSync(PROFILES_DIR, { recursive: true, force: true }); } catch (e) {}
-        } catch (e) {}
+            } catch (e) { }
+
+            try { if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE); } catch { }
+            try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch { }
+            try { if (fs.existsSync(CORE_FILE)) fs.unlinkSync(CORE_FILE); } catch { }
+            try { if (fs.existsSync(CORE_VER_FILE)) fs.unlinkSync(CORE_VER_FILE); } catch { }
+            try { if (fs.existsSync(PROFILES_DIR)) fs.rmSync(PROFILES_DIR, { recursive: true, force: true }); } catch (e) { }
+        } catch (e) { }
     }
 
     async function gracefulShutdown(reason) {
@@ -555,33 +555,41 @@ Reason: ${reason}`;
         console.log(`\n${t.shutting_down}${reason}`);
         try {
             await performCleanup(reason);
-        } catch (e) {}
-        try { await new Promise(r => setTimeout(r, 1000)); } catch {}
+        } catch (e) { }
+        try { await new Promise(r => setTimeout(r, 1000)); } catch { }
         process.exit(0);
     }
 
     process.on('exit', (code) => {
         try {
             const endTime = new Date();
-            try { fs.writeFileSync(SIGNAL_FILE, `exit_code_${code}`); } catch {}
+            try { fs.writeFileSync(SIGNAL_FILE, `exit_code_${code}`); } catch { }
             try {
                 for (const tproc of childProcesses.tor) {
                     if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
                 }
-            } catch (e) {}
-            try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
-        } catch (e) {}
+            } catch (e) { }
+            try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch { }
+        } catch (e) { }
     });
 
-    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT (Ctrl+C)"));
     process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
     process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
     process.on("uncaughtException", err => {
+        console.error("\n!!! CRITICAL ERROR !!!");
         console.error("UncaughtException:", err.stack || err);
+        try {
+            sendWebhook(`🔴 CRASH: UncaughtException - ${err.message || err}`, "BotManager");
+        } catch (e) { }
         gracefulShutdown("uncaughtException");
     });
-    process.on("unhandledRejection", reason => {
+    process.on("unhandledRejection", (reason, promise) => {
+        console.error("\n!!! CRITICAL ERROR !!!");
         console.error("UnhandledRejection:", reason);
+        try {
+            sendWebhook(`🔴 CRASH: UnhandledRejection - ${reason}`, "BotManager");
+        } catch (e) { }
         gracefulShutdown("unhandledRejection");
     });
 
@@ -610,7 +618,7 @@ Reason: ${reason}`;
 
         const countRaw = (await ask(`${t.how_many_bots}30): `)).trim();
         let botCount = parseInt(countRaw);
-        
+
         if (isNaN(botCount) || botCount < 1) {
             botCount = 1;
             console.log("Invalid input, defaulting to 1 bot.");
@@ -618,20 +626,20 @@ Reason: ${reason}`;
             botCount = 60;
             console.log("Too many bots requested, capping at 60.");
         }
-        
+
         console.log(`[*] Will launch ${botCount} bot(s).\n`);
         activeBotCount = botCount;
 
-        try { if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true }); } catch {}
+        try { if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true }); } catch { }
 
         // MemReduct: Only use if already installed, skip unreliable downloads
         memreductPath = findMemReductExecutable();
-        
+
         if (memreductPath) {
             console.log("[MemReduct] ✓ Found at", memreductPath);
             openMemReductGui(memreductPath);
             memreductInterval = setInterval(() => {
-                try { runMemReductClean(memreductPath); } catch (e) {}
+                try { runMemReductClean(memreductPath); } catch (e) { }
             }, 5 * 60 * 1000);
         } else {
             console.log("[MemReduct] Not installed. Download from: https://github.com/henrypp/memreduct/releases/latest");
@@ -648,7 +656,7 @@ Reason: ${reason}`;
                 const helperProc = spawn("node", [HELPER_FILE], { stdio: "ignore" });
                 childProcesses.helper = { proc: helperProc };
             }
-        } catch (e) {}
+        } catch (e) { }
 
         // Launch bots with staggered start
         for (let i = 0; i < botCount; i++) {
@@ -667,22 +675,22 @@ Reason: ${reason}`;
             while (!shuttingDown) {
                 try {
                     const addRaw = (await ask("Enter additional bots to spawn (or 'q' to quit): ")).trim().toLowerCase();
-                    
+
                     if (addRaw === 'q' || addRaw === 'quit' || addRaw === 'exit') {
                         await gracefulShutdown("user_quit");
                         break;
                     }
-                    
+
                     if (addRaw === '') {
                         continue; // Ignore empty input
                     }
-                    
+
                     const addCount = parseInt(addRaw);
                     if (isNaN(addCount) || addCount <= 0 || addCount > 60) {
                         console.log("Invalid number. Enter 1-60 or 'q' to quit.");
                         continue;
                     }
-                    
+
                     const startIndex = activeBotCount;
                     activeBotCount += addCount;
 
@@ -690,18 +698,18 @@ Reason: ${reason}`;
                     const totalNeededProxies = Math.max(0, activeBotCount - 5);
                     const currentProxies = childProcesses.tor.length;
                     const toStart = Math.max(0, totalNeededProxies - currentProxies);
-                    
+
                     if (toStart > 0) {
                         console.log(`[Tor] Starting ${toStart} additional Tor instances...`);
                         startTorInstances(toStart, 9050 + currentProxies);
                     }
 
                     console.log(`[Spawn] Launching ${addCount} bots (indices ${startIndex}-${startIndex + addCount - 1})...`);
-                    
+
                     for (let i = 0; i < addCount; i++) {
                         const idx = startIndex + i;
                         let proxyPort = null;
-                        
+
                         // Only assign proxy if bot index >= 5
                         if (idx >= 5 && childProcesses.tor.length > 0) {
                             const torIdx = idx - 5;
@@ -711,7 +719,7 @@ Reason: ${reason}`;
                                 proxyPort = childProcesses.tor[torIdx % childProcesses.tor.length].port;
                             }
                         }
-                        
+
                         runBot(idx, url, proxyPort);
                         await new Promise(r => setTimeout(r, 5000));
                     }

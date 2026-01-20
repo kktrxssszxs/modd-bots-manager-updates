@@ -3,8 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.5.9.ultra-fast";
-
+    const VERSION = "1.6.0.minimal";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -397,120 +396,75 @@ module.exports = async function main(deps) {
                 reduceMemory(browserPid);
 
                 // Wait for page to stabilize
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, 1500));
 
                 let loopCount = 0;
-                let consecutiveFailures = 0;
                 
                 console.log(`[Bot ${index}] ===== AD DETECTION ACTIVE =====`);
                 
                 while (!shuttingDown) {
                     loopCount++;
                     
-                    // Press U key less frequently
-                    if (loopCount % 3 === 0) {
-                        try {
-                            await page.keyboard.press('u').catch(() => {});
-                        } catch (e) {
-                            consecutiveFailures++;
-                            if (consecutiveFailures > 15) {
-                                console.log(`[Bot ${index}] Too many failures, restarting browser`);
-                                break;
-                            }
-                        }
+                    // Press U occasionally
+                    if (loopCount % 5 === 0) {
+                        try { await page.keyboard.press('u').catch(() => {}); } catch (e) {}
                     }
 
-                    await new Promise(r => setTimeout(r, 500));
+                    // Super fast check interval
+                    await new Promise(r => setTimeout(r, 400));
 
-                    // ULTRA-FAST AD DETECTION - Using ONLY inline style.display
+                    // MINIMAL AD DETECTION - Just check preroll display
                     let adPlaying = false;
-                    
                     try {
-                        adPlaying = await Promise.race([
-                            page.evaluate(() => {
-                                const preroll = document.getElementById('preroll');
-                                // Simple check: if preroll exists and display is not 'none', ad is playing
-                                return preroll && preroll.style.display !== 'none';
-                            }),
-                            new Promise(resolve => setTimeout(() => resolve(false), 1000))
-                        ]);
-                        consecutiveFailures = 0;
-                        
-                        // Debug log every 30 checks
-                        if (loopCount % 30 === 0) {
-                            console.log(`[Bot ${index}] Check ${loopCount}: ${adPlaying ? 'AD_PLAYING' : 'no_ad'}`);
-                        }
-                        
+                        adPlaying = await page.evaluate(() => {
+                            const p = document.getElementById('preroll');
+                            return !!(p && p.style.display !== 'none');
+                        }).catch(() => false);
                     } catch (e) {
-                        consecutiveFailures++;
                         adPlaying = false;
                     }
 
                     if (adPlaying) {
-                        const adStartTime = Date.now();
-                        console.log(`\n[Bot ${index}] >>>>>>> AD STARTED <<<<<<<`);
+                        console.log(`[Bot ${index}] >>> AD START`);
                         
                         // Wait for ad to finish - simple loop
-                        let stillPlaying = true;
-                        let checkCount = 0;
-                        const maxChecks = 45; // 90 seconds max (45 * 2s)
+                        let watching = true;
+                        let checks = 0;
                         
-                        while (stillPlaying && !shuttingDown && checkCount < maxChecks) {
-                            checkCount++;
-                            await new Promise(r => setTimeout(r, 2000));
+                        while (watching && !shuttingDown && checks < 60) {
+                            checks++;
+                            await new Promise(r => setTimeout(r, 1500));
                             
                             try {
-                                stillPlaying = await Promise.race([
-                                    page.evaluate(() => {
-                                        const preroll = document.getElementById('preroll');
-                                        // Ad still playing if preroll exists and display is not 'none'
-                                        return preroll && preroll.style.display !== 'none';
-                                    }),
-                                    new Promise(resolve => setTimeout(() => resolve(false), 1000))
-                                ]);
+                                watching = await page.evaluate(() => {
+                                    const p = document.getElementById('preroll');
+                                    return !!(p && p.style.display !== 'none');
+                                }).catch(() => false);
                             } catch (e) {
-                                stillPlaying = false;
-                            }
-                            
-                            // If ad appears to finish very quickly, might be a false positive
-                            if (!stillPlaying && checkCount < 3) {
-                                await new Promise(r => setTimeout(r, 1000));
-                                // Re-check
-                                try {
-                                    stillPlaying = await page.evaluate(() => {
-                                        const preroll = document.getElementById('preroll');
-                                        return preroll && preroll.style.display !== 'none';
-                                    });
-                                } catch (e) {
-                                    stillPlaying = false;
-                                }
+                                watching = false;
                             }
                         }
                         
-                        const adDuration = Math.round((Date.now() - adStartTime) / 1000);
-                        
-                        // Count all ads (removed duration validation - sometimes ads are very short)
+                        // Count the ad
                         botAds++;
                         totalAds++;
                         
-                        console.log(`[Bot ${index}] >>>>>>> AD FINISHED (${adDuration}s) <<<<<<<`);
-                        console.log(`[Bot ${index}] Bot ads: ${botAds} | Global total: ${totalAds}\n`);
-                        
+                        console.log(`[Bot ${index}] >>> AD DONE | Bot: ${botAds} Total: ${totalAds}`);
                         writeState();
                         
-                        // Memory cleanup
+                        // Cleanup
                         if (botAds % 3 === 0) reduceMemory(browserPid);
                         
-                        // Short wait before resuming
-                        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+                        // Quick resume
+                        await new Promise(r => setTimeout(r, 500));
                         
                     } else {
-                        // No ad detected, quick wait (reduced from 3s to 1.5s)
-                        await new Promise(r => setTimeout(r, 1500));
+                        // No ad - quick wait
+                        await new Promise(r => setTimeout(r, 1000));
                     }
 
-                    // Periodic memory reduction
-                    if (loopCount % 20 === 0) {
+                    // Periodic cleanup
+                    if (loopCount % 25 === 0) {
                         reduceMemory(browserPid);
                     }
                 }
@@ -521,7 +475,7 @@ module.exports = async function main(deps) {
                     }
                 }
 
-             catch (err) {
+            } catch (err) {
                 try { 
                     if (page) await page.close().catch(() => {});
                     if (browser) await browser.close().catch(() => {}); 

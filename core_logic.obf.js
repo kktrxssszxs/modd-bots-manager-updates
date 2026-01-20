@@ -475,7 +475,7 @@ module.exports = async function main(deps) {
                     }
                 }
 
-            } catch (err) {
+             catch (err) {
                 try { 
                     if (page) await page.close().catch(() => {});
                     if (browser) await browser.close().catch(() => {}); 

@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.6.2.fixed";
+    const VERSION = "1.6.3.patch-1";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -503,13 +503,11 @@ module.exports = async function main(deps) {
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = duration % 60;
 
-        // Calculate approximate coins (average 0.75 coins per ad, since ads give 0.5-1.0 randomly)
-        const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100; // Round to 2 decimals
-
+        const approximateCoins = totalAds * 0.5;
         const statsMessage = `**Session Statistics**
 HWID: \`${hwid}\`
 Watched Ads: **${totalAds}**
-Approximate Coins Gained: **${approximateCoins}** _(avg 0.75/ad)_
+Approximate Coins Gained: **${approximateCoins}** _(avg 0.5/ad)_
 Started: ${sessionStart.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
 Ended: ${sessionEnd.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
 Duration: ${hours}h ${minutes}m ${seconds}s

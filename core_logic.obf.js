@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.5-newMode";
+    const VERSION = "1.8.5-newMode Patch-1";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -378,7 +378,7 @@ module.exports = async function main(deps) {
             const result = await new Promise((resolve) => {
                 const options = {
                     hostname: 'www.modd.io',
-                    path: `/api/game-server/${gameId}`,
+                    path: `/api/game-server/${gameId}/`,
                     method: 'GET',
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

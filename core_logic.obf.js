@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.4-newMode";
+    const VERSION = "1.8.5-newMode";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -372,7 +372,7 @@ module.exports = async function main(deps) {
     async function fetchServerInfo(gameId) {
         let attempts = 0;
         const maxAttempts = 3;
-
+    
         while (attempts < maxAttempts) {
             attempts++;
             const result = await new Promise((resolve) => {
@@ -390,43 +390,76 @@ module.exports = async function main(deps) {
                     },
                     timeout: 10000
                 };
-
+    
                 const req = https.request(options, (res) => {
                     let data = '';
                     res.on('data', chunk => data += chunk);
                     res.on('end', () => {
+                        console.log(`[Debug] Status: ${res.statusCode}`);
+                        console.log(`[Debug] Raw response: ${data.substring(0, 500)}`);
+                        
                         if (res.statusCode !== 200) {
+                            console.log(`[Debug] Non-200 status: ${res.statusCode}`);
                             resolve(null);
                             return;
                         }
                         try {
                             const response = JSON.parse(data);
-                            if (response.status === 'success' && response.message && response.message.length > 0) {
-                                const server = response.message[0];
+                            
+                            // testar multiplos formatos pq sim :)
+                            let server = null;
+                            
+                            // Format 1: { status: 'success', message: [{...}] }
+                            if (response.status === 'success' && Array.isArray(response.message) && response.message.length > 0) {
+                                server = response.message[0];
+                            }
+                            // Format 2: { success: true, data: [{...}] }
+                            else if (response.success === true && Array.isArray(response.data) && response.data.length > 0) {
+                                server = response.data[0];
+                            }
+                            // Format 3: Direct array [{...}]
+                            else if (Array.isArray(response) && response.length > 0) {
+                                server = response[0];
+                            }
+                            // Format 4: { servers: [{...}] }
+                            else if (Array.isArray(response.servers) && response.servers.length > 0) {
+                                server = response.servers[0];
+                            }
+                            
+                            if (server && server.ip && server.id) {
                                 resolve({
                                     ip: server.ip,
                                     id: server.id,
-                                    wsPort: server.wsPort
+                                    wsPort: server.wsPort || server.port || server.ws_port || 8080
                                 });
                             } else {
+                                console.log('[Debug] Could not extract server info from:', JSON.stringify(response).substring(0, 200));
                                 resolve(null);
                             }
                         } catch (e) {
+                            console.log('[Debug] JSON parse error:', e.message);
                             resolve(null);
                         }
                     });
                 });
-
-                req.on('error', () => resolve(null));
+    
+                req.on('error', (e) => {
+                    console.log('[Debug] Request error:', e.message);
+                    resolve(null);
+                });
                 req.on('timeout', () => {
+                    console.log('[Debug] Request timeout');
                     req.destroy();
                     resolve(null);
                 });
                 req.end();
             });
-
+    
             if (result) return result;
-            if (attempts < maxAttempts) await new Promise(r => setTimeout(r, 2000));
+            if (attempts < maxAttempts) {
+                console.log(`[Debug] Retrying... (${attempts}/${maxAttempts})`);
+                await new Promise(r => setTimeout(r, 2000));
+            }
         }
         return null;
     }

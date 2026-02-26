@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.2-newMode";
+    const VERSION = "1.8.4-newMode";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -164,7 +164,6 @@ module.exports = async function main(deps) {
                     continue;
                 }
 
-                // Ultra-minimal flags for stability and low resource usage
                 const launchArgs = [
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
@@ -233,7 +232,7 @@ module.exports = async function main(deps) {
                     Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
                 });
 
-                await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
                 await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40000 }).catch(() => {});
 
                 console.log(`[Bot ${index}] ${t.bot_ingame}`);
@@ -307,9 +306,7 @@ module.exports = async function main(deps) {
                 try { 
                     if (page) await page.close().catch(() => {});
                     if (browser) await browser.close().catch(() => {}); 
-                } catch (e) {
-                    // Ignore cleanup errors
-                }
+                } catch (e) {}
                 
                 if (!shuttingDown) {
                     console.log(`[Bot ${index}] ${t.restarting} (${err.message || err})`);
@@ -373,60 +370,70 @@ module.exports = async function main(deps) {
     }
 
     async function fetchServerInfo(gameId) {
-        return new Promise((resolve, reject) => {
-            const url = new URL(`https://www.modd.io/api/game-server/${gameId}`);
-            
-            const options = {
-                hostname: url.hostname,
-                path: url.pathname,
-                method: 'GET',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            };
+        let attempts = 0;
+        const maxAttempts = 3;
 
-            const req = https.request(options, (res) => {
-                let data = '';
-                
-                res.on('data', (chunk) => {
-                    data += chunk;
-                });
-                
-                res.on('end', () => {
-                    if (res.statusCode !== 200) {
-                        resolve(null);
-                        return;
-                    }
-                    try {
-                        const response = JSON.parse(data);
-                        if (response.status === 'success' && response.message && response.message.length > 0) {
-                            const server = response.message[0]; 
-                            resolve({
-                                ip: server.ip,
-                                id: server.id,
-                                wsPort: server.wsPort
-                            });
-                        } else {
+        while (attempts < maxAttempts) {
+            attempts++;
+            const result = await new Promise((resolve) => {
+                const options = {
+                    hostname: 'www.modd.io',
+                    path: `/api/game-server/${gameId}`,
+                    method: 'GET',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Origin': 'https://www.modd.io',
+                        'Referer': `https://www.modd.io/play/${gameId}`,
+                        'Connection': 'keep-alive'
+                    },
+                    timeout: 10000
+                };
+
+                const req = https.request(options, (res) => {
+                    let data = '';
+                    res.on('data', chunk => data += chunk);
+                    res.on('end', () => {
+                        if (res.statusCode !== 200) {
+                            resolve(null);
+                            return;
+                        }
+                        try {
+                            const response = JSON.parse(data);
+                            if (response.status === 'success' && response.message && response.message.length > 0) {
+                                const server = response.message[0];
+                                resolve({
+                                    ip: server.ip,
+                                    id: server.id,
+                                    wsPort: server.wsPort
+                                });
+                            } else {
+                                resolve(null);
+                            }
+                        } catch (e) {
                             resolve(null);
                         }
-                    } catch (e) {
-                        resolve(null);
-                    }
+                    });
                 });
+
+                req.on('error', () => resolve(null));
+                req.on('timeout', () => {
+                    req.destroy();
+                    resolve(null);
+                });
+                req.end();
             });
-            
-            req.on('error', (err) => {
-                resolve(null);
-            });
-            
-            req.end();
-        });
+
+            if (result) return result;
+            if (attempts < maxAttempts) await new Promise(r => setTimeout(r, 2000));
+        }
+        return null;
     }
 
     function generateJWTToken(gameId) {
         try {
             const sessionId = generateSessionId();
-            const distinctId = generateDistinctId();
             const now = Math.floor(Date.now() / 1000);
             const exp = now + 18000;
 
@@ -442,12 +449,10 @@ module.exports = async function main(deps) {
                 exp: exp
             };
 
-            // JWT implementation (header.alg: HS256)
             const header = { alg: "HS256", typ: "JWT" };
             
             const encodedHeader = base64urlEncode(JSON.stringify(header));
             const encodedPayload = base64urlEncode(JSON.stringify(payload));
-            
             const encodedSignature = createSignature(encodedHeader, encodedPayload);
             
             return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
@@ -518,20 +523,15 @@ module.exports = async function main(deps) {
 
             ws.on('message', (data) => {
                 const message = data.toString();
-                
                 if (message.includes('chat messages')) {
                     try {
                         const chatData = JSON.parse(message.substring(2));
-                        if (chatData.messages) {
-                            console.log(`[Chat] ${chatData.messages.length} messages loaded`);
-                        }
+                        if (chatData.messages) console.log(`[Chat] ${chatData.messages.length} messages loaded`);
                     } catch (e) {}
                 }
-                
                 if (message.includes('user connected') || message.includes('user joined')) {
                     console.log("[Game] User connected to game");
                 }
-                
                 if (autoWatchEnabled && autoWatchKey && message.includes(autoWatchKey)) {
                     console.log(`[AutoWatch] Detected key press: ${autoWatchKey}`);
                     ws.send(`["\\n",{"device":"key","key":"${autoWatchKey}"}]`);
@@ -552,7 +552,6 @@ module.exports = async function main(deps) {
                 while (connected && !shuttingDown) {
                     try {
                         const command = (await ask("Enter command (or 'help' for options): ")).trim();
-                        
                         if (command.toLowerCase() === 'quit' || command.toLowerCase() === 'exit') {
                             ws.close();
                             break;
@@ -590,28 +589,24 @@ module.exports = async function main(deps) {
                     } catch (e) {}
                 }
             };
-
             commandInterface();
         });
     }
 
-    // ----------------- Graceful cleanup with stats -----------------
     async function performCleanup(reason) {
         sessionEnd = new Date();
         const duration = Math.floor((sessionEnd - sessionStart) / 1000);
         const hours = Math.floor(duration / 3600);
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = duration % 60;
-
-        // Calculate approximate coins (average 0.75 coins per ad, since ads give 0.5-1.0 randomly)
-        const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100; // Round to 2 decimals
+        const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100;
 
         const statsMessage = `**Session Statistics**
 HWID: \`${hwid}\`
 Watched Ads: **${totalAds}**
 Approximate Coins Gained: **${approximateCoins}** _(avg 0.75/ad)_
-Started: ${sessionStart.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
-Ended: ${sessionEnd.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+Started: ${sessionStart.toLocaleString()}
+Ended: ${sessionEnd.toLocaleString()}
 Duration: ${hours}h ${minutes}m ${seconds}s
 Reason: ${reason}`;
 
@@ -621,23 +616,16 @@ Reason: ${reason}`;
         try {
             writeState();
             try { fs.writeFileSync(SIGNAL_FILE, reason || 'shutdown'); } catch {}
-            
-            try {
-                for (const b of browsers) {
-                    try {
-                        const pages = await b.pages();
-                        for (const p of pages) await p.close().catch(() => {});
-                        await b.close().catch(() => {});
-                    } catch (e) {}
-                }
-            } catch (e) {}
-            
-            try {
-                for (const tproc of childProcesses.tor) {
-                    if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
-                }
-            } catch (e) {}
-            
+            for (const b of browsers) {
+                try {
+                    const pages = await b.pages();
+                    for (const p of pages) await p.close().catch(() => {});
+                    await b.close().catch(() => {});
+                } catch (e) {}
+            }
+            for (const tproc of childProcesses.tor) {
+                if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
+            }
             try { if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE); } catch {}
             try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
             try { if (fs.existsSync(CORE_FILE)) fs.unlinkSync(CORE_FILE); } catch {}
@@ -650,23 +638,18 @@ Reason: ${reason}`;
         if (shuttingDown) return;
         shuttingDown = true;
         console.log(`\n${t.shutting_down}${reason}`);
-        try {
-            await performCleanup(reason);
-        } catch (e) {}
+        try { await performCleanup(reason); } catch (e) {}
         try { await new Promise(r => setTimeout(r, 1000)); } catch {}
         process.exit(0);
     }
 
     process.on('exit', (code) => {
         try {
-            const endTime = new Date();
-            try { fs.writeFileSync(SIGNAL_FILE, `exit_code_${code}`); } catch {}
-            try {
-                for (const tproc of childProcesses.tor) {
-                    if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
-                }
-            } catch (e) {}
-            try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
+            fs.writeFileSync(SIGNAL_FILE, `exit_code_${code}`);
+            for (const tproc of childProcesses.tor) {
+                if (tproc && tproc.proc) killProcessTree(tproc.proc.pid);
+            }
+            if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE);
         } catch (e) {}
     });
 
@@ -674,23 +657,16 @@ Reason: ${reason}`;
     process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
     process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
     process.on("uncaughtException", err => {
-        console.error("\n!!! CRITICAL ERROR !!!");
-        console.error("UncaughtException:", err.stack || err);
-        try {
-            sendWebhook(`🔴 CRASH: UncaughtException - ${err.message || err}`, "BotManager");
-        } catch (e) {}
+        console.error("\n!!! CRITICAL ERROR !!!", err.stack || err);
+        sendWebhook(`🔴 CRASH: UncaughtException - ${err.message || err}`, "BotManager");
         gracefulShutdown("uncaughtException");
     });
-    process.on("unhandledRejection", (reason, promise) => {
-        console.error("\n!!! CRITICAL ERROR !!!");
-        console.error("UnhandledRejection:", reason);
-        try {
-            sendWebhook(`🔴 CRASH: UnhandledRejection - ${reason}`, "BotManager");
-        } catch (e) {}
+    process.on("unhandledRejection", (reason) => {
+        console.error("\n!!! CRITICAL ERROR !!!", reason);
+        sendWebhook(`🔴 CRASH: UnhandledRejection - ${reason}`, "BotManager");
         gracefulShutdown("unhandledRejection");
     });
 
-    // ----------------- Startup flow -----------------
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const ask = q => new Promise(r => rl.question(q, r));
 
@@ -709,8 +685,7 @@ Reason: ${reason}`;
         writeState();
         console.log(t.license_verified);
 
-        // Mode selection
-        const modeChoice = (await ask("Select mode:\n1) Default browser opening mode (current behavior)\n2) WebSocket connection mode (beta)\nEnter choice (1 or 2) [default: 1]: ")).trim();
+        const modeChoice = (await ask("Select mode:\n1) Default browser opening mode\n2) WebSocket connection mode (beta)\nEnter choice [1]: ")).trim();
         const mode = modeChoice === '2' ? 2 : 1;
 
         if (mode === 2) {
@@ -723,15 +698,8 @@ Reason: ${reason}`;
         if (!url.includes("autojoin=true")) url += (url.includes("?") ? "&" : "?") + "autojoin=true";
 
         const countRaw = (await ask(`${t.how_many_bots}30): `)).trim();
-        let botCount = parseInt(countRaw);
-        
-        if (isNaN(botCount) || botCount < 1) {
-            botCount = 1;
-            console.log("Invalid input, defaulting to 1 bot.");
-        } else if (botCount > 60) {
-            botCount = 60;
-            console.log("Too many bots requested, capping at 60.");
-        }
+        let botCount = parseInt(countRaw) || 1;
+        botCount = Math.min(60, Math.max(1, botCount));
         
         console.log(`[*] Will launch ${botCount} bot(s).\n`);
         activeBotCount = botCount;
@@ -739,87 +707,52 @@ Reason: ${reason}`;
         try { if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true }); } catch {}
 
         const extraBots = Math.max(0, botCount - 5);
-        if (extraBots > 0) {
-            startTorInstances(extraBots, 9050);
-        }
+        if (extraBots > 0) startTorInstances(extraBots, 9050);
 
         try {
-            if (fs.existsSync(HELPER_FILE)) {
-                const helperProc = spawn("node", [HELPER_FILE], { stdio: "ignore" });
-                childProcesses.helper = { proc: helperProc };
-            }
+            if (fs.existsSync(HELPER_FILE)) spawn("node", [HELPER_FILE], { stdio: "ignore" });
         } catch (e) {}
 
-        // Launch bots with staggered start
         for (let i = 0; i < botCount; i++) {
             let proxyPort = null;
             if (i >= 5 && childProcesses.tor.length > 0) {
                 const torIdx = i - 5;
-                if (childProcesses.tor[torIdx]) proxyPort = childProcesses.tor[torIdx].port;
-                else proxyPort = childProcesses.tor[(torIdx % childProcesses.tor.length)].port;
+                proxyPort = childProcesses.tor[torIdx % childProcesses.tor.length].port;
             }
             runBot(i, url, proxyPort);
             await new Promise(r => setTimeout(r, 5000));
         }
 
-        // Interactive spawn loop
         (async function interactiveAddLoop() {
             while (!shuttingDown) {
                 try {
                     const addRaw = (await ask("Enter additional bots to spawn (or 'q' to quit): ")).trim().toLowerCase();
-                    
                     if (addRaw === 'q' || addRaw === 'quit' || addRaw === 'exit') {
                         await gracefulShutdown("user_quit");
                         break;
                     }
-                    
-                    if (addRaw === '') {
-                        continue; // Ignore empty input
-                    }
+                    if (addRaw === '') continue;
                     
                     const addCount = parseInt(addRaw);
-                    if (isNaN(addCount) || addCount <= 0 || addCount > 60) {
-                        console.log("Invalid number. Enter 1-60 or 'q' to quit.");
-                        continue;
-                    }
+                    if (isNaN(addCount) || addCount <= 0 || addCount > 60) continue;
                     
                     const startIndex = activeBotCount;
                     activeBotCount += addCount;
-
-                    // Calculate how many NEW Tor instances we need
                     const totalNeededProxies = Math.max(0, activeBotCount - 5);
                     const currentProxies = childProcesses.tor.length;
                     const toStart = Math.max(0, totalNeededProxies - currentProxies);
                     
-                    if (toStart > 0) {
-                        console.log(`[Tor] Starting ${toStart} additional Tor instances...`);
-                        startTorInstances(toStart, 9050 + currentProxies);
-                    }
-
-                    console.log(`[Spawn] Launching ${addCount} bots (indices ${startIndex}-${startIndex + addCount - 1})...`);
-                    
+                    if (toStart > 0) startTorInstances(toStart, 9050 + currentProxies);
                     for (let i = 0; i < addCount; i++) {
                         const idx = startIndex + i;
                         let proxyPort = null;
-                        
-                        // Only assign proxy if bot index >= 5
                         if (idx >= 5 && childProcesses.tor.length > 0) {
-                            const torIdx = idx - 5;
-                            if (childProcesses.tor[torIdx]) {
-                                proxyPort = childProcesses.tor[torIdx].port;
-                            } else {
-                                proxyPort = childProcesses.tor[torIdx % childProcesses.tor.length].port;
-                            }
+                            proxyPort = childProcesses.tor[(idx - 5) % childProcesses.tor.length].port;
                         }
-                        
                         runBot(idx, url, proxyPort);
                         await new Promise(r => setTimeout(r, 5000));
                     }
-
-                    console.log(`[Spawn] ✓ Added ${addCount} bots successfully.\n`);
-                } catch (e) {
-                    console.log("[Spawn] Error:", e.message);
-                }
+                } catch (e) {}
             }
         })();
 

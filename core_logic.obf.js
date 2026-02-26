@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.6.2.fixed";
+    const VERSION = "1.8.2-newMode";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -26,12 +26,8 @@ module.exports = async function main(deps) {
 
     let childProcesses = {
         tor: [],
-        memreduct: null,
         helper: null
     };
-
-    let memreductPath = null;
-    let memreductInterval = null;
 
     const translations = {
         en: {
@@ -95,153 +91,6 @@ module.exports = async function main(deps) {
         } catch (e) {}
     }
 
-    // ----------------- MemReduct with redirect handling -----------------
-    function findMemReductExecutable() {
-        if (process.platform !== 'win32') return null;
-        const candidates = [
-            path.join(process.env["PROGRAMFILES"] || "C:\\Program Files", "MemReduct", "memreduct.exe"),
-            path.join(process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)", "MemReduct", "memreduct.exe"),
-            path.join(BASE_DIR, "memreduct.exe"),
-            path.join(BASE_DIR, "MemReduct", "memreduct.exe")
-        ];
-        for (const c of candidates) if (c && fs.existsSync(c)) return c;
-        return null;
-    }
-
-    async function downloadAndInstallMemReduct() {
-        if (process.platform !== 'win32') return null;
-        const setupUrl = "https://github.com/henrypp/memreduct/releases/download/v.3.5.2/memreduct-3.5.2-setup.exe";
-        const outSetup = path.join(BASE_DIR, "memreduct-setup.exe");
-        
-        try {
-            console.log("[MemReduct] Attempting quick download (15s timeout)...");
-            
-            // Download with proper file handling and timeout
-            await Promise.race([
-                new Promise((resolve, reject) => {
-                    const file = fs.createWriteStream(outSetup);
-                    let followedRedirects = 0;
-                    const maxRedirects = 5;
-                    
-                    const request = (url) => {
-                        const req = https.get(url, { timeout: 15000 }, res => {
-                            if (res.statusCode === 302 || res.statusCode === 301) {
-                                followedRedirects++;
-                                if (followedRedirects > maxRedirects) {
-                                    file.close();
-                                    try { fs.unlinkSync(outSetup); } catch {}
-                                    return reject(new Error('Too many redirects'));
-                                }
-                                file.close();
-                                try { fs.unlinkSync(outSetup); } catch {}
-                                return request(res.headers.location);
-                            }
-                            if (res.statusCode !== 200) {
-                                file.close();
-                                try { fs.unlinkSync(outSetup); } catch {}
-                                return reject(new Error(`HTTP ${res.statusCode}`));
-                            }
-                            // Pipe response to file
-                            res.pipe(file);
-                            // Wait for file stream to finish writing
-                            file.on('finish', () => {
-                                file.close(() => {
-                                    console.log("[MemReduct] Download complete");
-                                    resolve();
-                                });
-                            });
-                            file.on('error', err => {
-                                file.close();
-                                try { fs.unlinkSync(outSetup); } catch {}
-                                reject(err);
-                            });
-                        });
-                        req.on('error', err => {
-                            file.close();
-                            try { fs.unlinkSync(outSetup); } catch {}
-                            reject(err);
-                        });
-                        req.on('timeout', () => {
-                            req.destroy();
-                            file.close();
-                            try { fs.unlinkSync(outSetup); } catch {}
-                            reject(new Error('Download timeout'));
-                        });
-                    };
-                    request(setupUrl);
-                }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Overall timeout')), 20000))
-            ]);
-            
-            // Verify file was downloaded
-            if (!fs.existsSync(outSetup) || fs.statSync(outSetup).size === 0) {
-                console.log("[MemReduct] Download failed - file is empty or missing");
-                try { fs.unlinkSync(outSetup); } catch {}
-                return null;
-            }
-            
-            console.log("[MemReduct] Installing silently...");
-            
-            // Try silent install
-            const silentArgs = [["/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES"], ["/S"]];
-            for (const args of silentArgs) {
-                try {
-                    const child = spawn(outSetup, args, { stdio: "ignore", detached: true });
-                    child.unref();
-                    await new Promise(resolve => setTimeout(resolve, 4000));
-                    const found = findMemReductExecutable();
-                    if (found) {
-                        memreductPath = found;
-                        console.log("[MemReduct] ✓ Installed successfully");
-                        try { fs.unlinkSync(outSetup); } catch {}
-                        return memreductPath;
-                    }
-                } catch (e) {}
-            }
-            
-            console.log("[MemReduct] Installer may need manual confirmation");
-            return null;
-        } catch (e) {
-            console.log("[MemReduct] Auto-install failed:", e.message);
-            try { if (fs.existsSync(outSetup)) fs.unlinkSync(outSetup); } catch {}
-            return null;
-        }
-    }
-
-    function openMemReductGui(memPath) {
-        try {
-            if (!memPath) memPath = findMemReductExecutable();
-            if (!memPath) return false;
-            const proc = spawn(memPath, [], { stdio: "ignore", detached: true });
-            proc.unref();
-            memreductPath = memPath;
-            console.log("[MemReduct] GUI opened at", memPath);
-            return true;
-        } catch (e) {
-            console.log("[MemReduct] Failed to open GUI:", e.message);
-            return false;
-        }
-    }
-
-    function runMemReductClean(memPath) {
-        try {
-            if (!memPath) memPath = memreductPath || findMemReductExecutable();
-            if (!memPath) return false;
-            const attempts = [["--clean"], ["/clean"]];
-            for (const args of attempts) {
-                try {
-                    execSync(`"${memPath}" ${args.join(" ")}`, { stdio: 'ignore', timeout: 3000 });
-                    console.log("[MemReduct] Clean triggered");
-                    return true;
-                } catch (e) {}
-            }
-            return false;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    // ----------------- Tor multi-instance manager -----------------
     function findTorBinary() {
         if (!torInfo || !torInfo.torPath) return null;
         return torInfo.torPath;
@@ -302,7 +151,6 @@ module.exports = async function main(deps) {
         }
     }
 
-    // ----------------- ULTRA OPTIMIZED Bot runtime -----------------
     async function runBot(index, url, proxyPort = null) {
         let botAds = 0;
         while (!shuttingDown) {
@@ -352,7 +200,7 @@ module.exports = async function main(deps) {
                     args: launchArgs,
                     ignoreDefaultArgs: ["--enable-automation"],
                     defaultViewport: { width: 640, height: 480 },
-                    protocolTimeout: 300000  // Increased to 5 minutes to prevent timeouts
+                    protocolTimeout: 300000 
                 }).catch(err => {
                     console.error(`[Bot ${index}] Launch failed:`, err.message);
                     throw err;
@@ -367,7 +215,6 @@ module.exports = async function main(deps) {
                 createdBrowsersCount++;
                 console.log(`[Bot ${index}] Started (pid=${browserPid})`);
 
-                // Set low priority immediately
                 if (process.platform === 'win32') {
                     try {
                         execSync(`wmic process where processid=${browserPid} CALL setpriority "idle"`, { stdio: 'ignore', timeout: 2000 });
@@ -380,7 +227,6 @@ module.exports = async function main(deps) {
                 const pages = await browser.pages();
                 page = pages.length ? pages[0] : await browser.newPage();
 
-                // Ultra-minimal page setup
                 await page.evaluateOnNewDocument(() => {
                     Object.defineProperty(navigator, 'webdriver', { get: () => false });
                     Object.defineProperty(document, 'hidden', { get: () => false });
@@ -392,10 +238,8 @@ module.exports = async function main(deps) {
 
                 console.log(`[Bot ${index}] ${t.bot_ingame}`);
 
-                // Trigger initial memory reduction
                 reduceMemory(browserPid);
 
-                // Wait for page to stabilize
                 await new Promise(r => setTimeout(r, 1500));
 
                 let loopCount = 0;
@@ -405,15 +249,12 @@ module.exports = async function main(deps) {
                 while (!shuttingDown) {
                     loopCount++;
                     
-                    // Press U occasionally
                     if (loopCount % 5 === 0) {
                         try { await page.keyboard.press('u').catch(() => {}); } catch (e) {}
                     }
 
-                    // Super fast check interval
                     await new Promise(r => setTimeout(r, 400));
 
-                    // MINIMAL AD DETECTION - Just check preroll display
                     let adPlaying = false;
                     try {
                         adPlaying = await page.evaluate(() => {
@@ -427,7 +268,6 @@ module.exports = async function main(deps) {
                     if (adPlaying) {
                         console.log(`[Bot ${index}] >>> AD START`);
                         
-                        // Wait for ad to finish - simple loop
                         let watching = true;
                         let checks = 0;
                         
@@ -445,7 +285,6 @@ module.exports = async function main(deps) {
                             }
                         }
                         
-                        // Count the ad - with verification logging
                         const oldTotal = totalAds;
                         botAds++;
                         totalAds++;
@@ -453,18 +292,12 @@ module.exports = async function main(deps) {
                         console.log(`[Bot ${index}] >>> AD DONE | Bot: ${botAds} Total: ${oldTotal} -> ${totalAds}`);
                         writeState();
                         
-                        // Cleanup
-                        if (botAds % 3 === 0) reduceMemory(browserPid);
-                        
-                        // Quick resume
                         await new Promise(r => setTimeout(r, 500));
                         
                     } else {
-                        // No ad - quick wait
                         await new Promise(r => setTimeout(r, 1000));
                     }
 
-                    // Periodic cleanup
                     if (loopCount % 25 === 0) {
                         reduceMemory(browserPid);
                     }
@@ -493,6 +326,273 @@ module.exports = async function main(deps) {
             "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
         ];
         return paths.find(p => fs.existsSync(p));
+    }
+
+    async function runWebSocketMode() {
+        console.log("\n=== WebSocket Connection Mode (Beta) ===\n");
+        
+        try {
+            const gameId = (await ask("Enter Game ID: ")).trim();
+            const gameSlug = (await ask("Enter Game Slug: ")).trim();
+            
+            if (!gameId || !gameSlug) {
+                console.log("Game ID and Game Slug are required.");
+                await ask("Press Enter to exit...");
+                return await gracefulShutdown("invalid_game_info");
+            }
+
+            console.log("Fetching server information...");
+            const serverInfo = await fetchServerInfo(gameId);
+            if (!serverInfo) {
+                console.log("Failed to fetch server information. Check Game ID and network.");
+                await ask("Press Enter to exit...");
+                return await gracefulShutdown("server_fetch_failed");
+            }
+
+            const token = generateJWTToken(gameId);
+            if (!token) {
+                console.log("Failed to generate JWT token.");
+                await ask("Press Enter to exit...");
+                return await gracefulShutdown("token_generation_failed");
+            }
+
+            const distinctId = "69a0ba4484137fce09afcf78";
+            const wsUrl = `wss://${serverInfo.ip}/?token=${token}&guestUserToken=&sid=${serverInfo.id}&cfwp=${serverInfo.wsPort}&distinctId=${distinctId}&ws_port=${serverInfo.wsPort}`;
+            
+            console.log(`Connecting to WebSocket: ${serverInfo.ip} (port ${serverInfo.wsPort})`);
+            console.log(`Server ID: ${serverInfo.id}`);
+            
+            await connectWebSocket(wsUrl, gameId, gameSlug, serverInfo);
+            await ask("Connection closed. Press Enter to exit...");
+            
+        } catch (err) {
+            console.error("WebSocket mode error:", err.message);
+            await ask("Press Enter to exit...");
+            await gracefulShutdown("websocket_error");
+        }
+    }
+
+    async function fetchServerInfo(gameId) {
+        return new Promise((resolve, reject) => {
+            const url = new URL(`https://www.modd.io/api/game-server/${gameId}`);
+            
+            const options = {
+                hostname: url.hostname,
+                path: url.pathname,
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            };
+
+            const req = https.request(options, (res) => {
+                let data = '';
+                
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                
+                res.on('end', () => {
+                    if (res.statusCode !== 200) {
+                        resolve(null);
+                        return;
+                    }
+                    try {
+                        const response = JSON.parse(data);
+                        if (response.status === 'success' && response.message && response.message.length > 0) {
+                            const server = response.message[0]; 
+                            resolve({
+                                ip: server.ip,
+                                id: server.id,
+                                wsPort: server.wsPort
+                            });
+                        } else {
+                            resolve(null);
+                        }
+                    } catch (e) {
+                        resolve(null);
+                    }
+                });
+            });
+            
+            req.on('error', (err) => {
+                resolve(null);
+            });
+            
+            req.end();
+        });
+    }
+
+    function generateJWTToken(gameId) {
+        try {
+            const sessionId = generateSessionId();
+            const distinctId = generateDistinctId();
+            const now = Math.floor(Date.now() / 1000);
+            const exp = now + 18000;
+
+            const payload = {
+                userId: "69a0ba4484137fce09afcf78",
+                createdAt: now * 1000,
+                sessionId: sessionId,
+                gameId: gameId,
+                isBanned: false,
+                allowJoin: true,
+                agentId: "",
+                iat: now,
+                exp: exp
+            };
+
+            // JWT implementation (header.alg: HS256)
+            const header = { alg: "HS256", typ: "JWT" };
+            
+            const encodedHeader = base64urlEncode(JSON.stringify(header));
+            const encodedPayload = base64urlEncode(JSON.stringify(payload));
+            
+            const encodedSignature = createSignature(encodedHeader, encodedPayload);
+            
+            return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function base64urlEncode(str) {
+        return Buffer.from(str, 'utf8')
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
+
+    function createSignature(header, payload) {
+        const data = `${header}.${payload}`;
+        const secret = "modd-ws-secret";
+        const sig = crypto.createHmac('sha256', secret).update(data).digest();
+        return sig.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    function generateSessionId() {
+        return 'IMG' + Math.random().toString(36).substr(2, 9) + 'S_' + 
+               Math.random().toString(36).substr(2, 4) + '_' + 
+               Math.random().toString(36).substr(2, 6) + '_' + 
+               Math.random().toString(36).substr(2, 6);
+    }
+
+    function generateDistinctId() {
+        return '2.9.16.18_' + Math.random().toString(36).substr(2, 8) + '_' + 
+               Math.floor(Math.random() * 10) + '_' + 
+               Math.random().toString(36).substr(2, 5) + '_' + 
+               Math.floor(Math.random() * 90000) + 10000 + '_' + 
+               Math.floor(Math.random() * 9000) + 1000;
+    }
+
+    async function connectWebSocket(wsUrl, gameId, gameSlug, serverInfo) {
+        let WebSocket;
+        try {
+            WebSocket = require('ws');
+        } catch (e) {
+            console.error("Missing 'ws' module. Run: npm install ws");
+            throw e;
+        }
+        
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(wsUrl);
+            let connected = false;
+            let autoWatchKey = null;
+            let autoWatchEnabled = true;
+            const gameServerId = serverInfo ? serverInfo.id : generateDistinctId();
+
+            ws.on('open', () => {
+                console.log("✓ WebSocket connected");
+                connected = true;
+                
+                setTimeout(() => {
+                    ws.send('0{"sid":"jgaZ9e-o5izR15M1AFiV","upgrades":[],"pingInterval":25000,"pingTimeout":20000,"maxPayload":1000000}');
+                    setTimeout(() => {
+                        const token = generateJWTToken(gameId);
+                        const connectMsg = `40{"gameId":"${gameId}","gameSlug":"${gameSlug}","token":"${token}","gameServerId":"${gameServerId}"}`;
+                        ws.send(connectMsg);
+                    }, 100);
+                }, 100);
+            });
+
+            ws.on('message', (data) => {
+                const message = data.toString();
+                
+                if (message.includes('chat messages')) {
+                    try {
+                        const chatData = JSON.parse(message.substring(2));
+                        if (chatData.messages) {
+                            console.log(`[Chat] ${chatData.messages.length} messages loaded`);
+                        }
+                    } catch (e) {}
+                }
+                
+                if (message.includes('user connected') || message.includes('user joined')) {
+                    console.log("[Game] User connected to game");
+                }
+                
+                if (autoWatchEnabled && autoWatchKey && message.includes(autoWatchKey)) {
+                    console.log(`[AutoWatch] Detected key press: ${autoWatchKey}`);
+                    ws.send(`["\\n",{"device":"key","key":"${autoWatchKey}"}]`);
+                }
+            });
+
+            ws.on('close', () => {
+                console.log("WebSocket connection closed");
+                resolve();
+            });
+
+            ws.on('error', (err) => {
+                console.error("WebSocket error:", err.message);
+                reject(err);
+            });
+
+            const commandInterface = async () => {
+                while (connected && !shuttingDown) {
+                    try {
+                        const command = (await ask("Enter command (or 'help' for options): ")).trim();
+                        
+                        if (command.toLowerCase() === 'quit' || command.toLowerCase() === 'exit') {
+                            ws.close();
+                            break;
+                        } else if (command.toLowerCase() === 'help') {
+                            console.log("Available commands:");
+                            console.log("  [\"\\\\n\",{\"device\":\"key\",\"key\":\"w\"}] - Press key W");
+                            console.log("  [\"\\\\t\",{\"device\":\"key\",\"key\":\"d\"}] - Release key D");
+                            console.log("  autoWatch KEY - Enable auto-watch for specific key");
+                            console.log("  autoWatch off/on - Disable/enable auto-watch");
+                            console.log("  quit - Exit WebSocket mode");
+                        } else if (command.startsWith('autoWatch')) {
+                            const parts = command.split(' ');
+                            if (parts.length === 2) {
+                                if (parts[1] === 'off') {
+                                    autoWatchEnabled = false;
+                                    console.log("[AutoWatch] Disabled");
+                                } else if (parts[1] === 'on') {
+                                    autoWatchEnabled = true;
+                                    console.log("[AutoWatch] Enabled");
+                                } else {
+                                    autoWatchKey = parts[1];
+                                    console.log(`[AutoWatch] Set to watch key: ${autoWatchKey}`);
+                                }
+                            }
+                        } else if (command.startsWith('[') && command.includes('device')) {
+                            try {
+                                ws.send(command);
+                                console.log(`[Command] Sent: ${command}`);
+                            } catch (e) {
+                                console.log("[Command] Failed to send");
+                            }
+                        } else {
+                            console.log("Unknown command. Type 'help' for options.");
+                        }
+                    } catch (e) {}
+                }
+            };
+
+            commandInterface();
+        });
     }
 
     // ----------------- Graceful cleanup with stats -----------------
@@ -609,6 +709,15 @@ Reason: ${reason}`;
         writeState();
         console.log(t.license_verified);
 
+        // Mode selection
+        const modeChoice = (await ask("Select mode:\n1) Default browser opening mode (current behavior)\n2) WebSocket connection mode (beta)\nEnter choice (1 or 2) [default: 1]: ")).trim();
+        const mode = modeChoice === '2' ? 2 : 1;
+
+        if (mode === 2) {
+            await runWebSocketMode();
+            return;
+        }
+
         let url = (await ask(t.enter_url)).trim();
         if (!url) return await gracefulShutdown("no_url");
         if (!url.includes("autojoin=true")) url += (url.includes("?") ? "&" : "?") + "autojoin=true";
@@ -628,20 +737,6 @@ Reason: ${reason}`;
         activeBotCount = botCount;
 
         try { if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true }); } catch {}
-
-        // MemReduct: Only use if already installed, skip unreliable downloads
-        memreductPath = findMemReductExecutable();
-        
-        if (memreductPath) {
-            console.log("[MemReduct] ✓ Found at", memreductPath);
-            openMemReductGui(memreductPath);
-            memreductInterval = setInterval(() => {
-                try { runMemReductClean(memreductPath); } catch (e) {}
-            }, 5 * 60 * 1000);
-        } else {
-            console.log("[MemReduct] Not installed. Download from: https://github.com/henrypp/memreduct/releases/latest");
-            console.log("[MemReduct] (Optional - bots work fine without it!)\n");
-        }
 
         const extraBots = Math.max(0, botCount - 5);
         if (extraBots > 0) {

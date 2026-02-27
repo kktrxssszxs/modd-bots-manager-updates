@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.9 Patch-12.3";
+    const VERSION = "1.8.9 Patch-12.4";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -967,3 +967,4 @@ Reason: ${reason}`;
         await gracefulShutdown("crash");
     }
 };
+// testing new stuff lets see what happens

@@ -3,8 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.9 Patch-4.2";
-    // shaquille o' neal resi resi
+    const VERSION = "1.8.9 Patch-6.2";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -339,17 +338,43 @@ module.exports = async function main(deps) {
                 return await gracefulShutdown("invalid_game_info");
             }
 
-            console.log("Spinning up browser to capture WebSocket URL...");
-            const wsInfo = await captureGameWebSocket(gameSlug);
-            if (!wsInfo || !wsInfo.url) {
-                console.log("Failed to capture game WebSocket URL.");
-                await ask("Press Enter to exit...");
-                return await gracefulShutdown("ws_url_capture_failed");
+            const quantityRaw = (await ask("How many connections? [1]: ")).trim();
+            const quantity = Math.max(1, Math.min(10, parseInt(quantityRaw, 10) || 1));
+
+            const torCount = quantity;
+            if (torCount > 0) {
+                const started = startTorInstances(torCount, 9050);
+                if (started.length === 0 && torCount > 0) {
+                    console.log("Tor not available; continuing without proxy.");
+                }
             }
 
-            console.log(`Captured WS URL: ${wsInfo.url}`);
-            
-            await connectWebSocket(wsInfo.url, gameId, gameSlug, null, !!wsInfo.canReconnect);
+            console.log(`Opening ${quantity} browser(s) to join game (keep them open)...`);
+            const sessions = [];
+            for (let i = 0; i < quantity; i++) {
+                const proxyPort = childProcesses.tor.length > i ? childProcesses.tor[i].port : null;
+                const session = await launchBrowserAndJoinGame(gameSlug, proxyPort, i);
+                if (session) {
+                    sessions.push(session);
+                    browsers.push(session.browser);
+                } else {
+                    console.log(`[Connection ${i + 1}] Failed to join.`);
+                }
+                if (i < quantity - 1) await new Promise(r => setTimeout(r, 3000));
+            }
+
+            if (sessions.length === 0) {
+                console.log("No connections established.");
+                await ask("Press Enter to exit...");
+                return await gracefulShutdown("ws_no_connections");
+            }
+
+            console.log(`✓ ${sessions.length} connection(s) active. Commands are sent to the game via the browser(s). Type 'help' or 'quit'.`);
+            await runBrowserCommandLoop(sessions);
+            for (const s of sessions) {
+                try { s.page.close().catch(() => {}); } catch (e) {}
+                try { s.browser.close().catch(() => {}); } catch (e) {}
+            }
             await ask("Connection closed. Press Enter to exit...");
             
         } catch (err) {
@@ -359,12 +384,20 @@ module.exports = async function main(deps) {
         }
     }
 
-    async function captureGameWebSocket(gameSlug) {
+    async function launchBrowserAndJoinGame(gameSlug, proxyPort, index) {
         const chromePath = findChrome();
         if (!chromePath) {
             console.log(t.chrome_missing);
             return null;
         }
+
+        const launchArgs = [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-blink-features=AutomationControlled",
+            "--mute-audio"
+        ];
+        if (proxyPort) launchArgs.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
 
         let browser = null;
         let page = null;
@@ -373,19 +406,14 @@ module.exports = async function main(deps) {
             browser = await puppeteer.launch({
                 executablePath: chromePath,
                 headless: false,
-                args: [
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-blink-features=AutomationControlled",
-                    "--mute-audio"
-                ]
+                args: launchArgs
             });
 
             page = await browser.newPage();
 
             await page.evaluateOnNewDocument(() => {
                 const OriginalWS = window.WebSocket;
-                window.__bot_wsInfo = { url: null, protocols: null, canReconnect: false, ws: null };
+                window.__bot_wsInfo = { url: null, protocols: null, ws: null };
                 window.WebSocket = function (url, protocols) {
                     const ws = new OriginalWS(url, protocols);
                     try {
@@ -411,33 +439,58 @@ module.exports = async function main(deps) {
                     () => window.__bot_wsInfo && window.__bot_wsInfo.url,
                     { timeout: 60000 }
                 );
-            } catch (e) {}
+            } catch (e) {
+                try { await browser.close().catch(() => {}); } catch (err) {}
+                return null;
+            }
 
-            const wsInfo = await page.evaluate(() => {
-                try {
-                    if (window.__bot_wsInfo && window.__bot_wsInfo.ws) {
-                        try { window.__bot_wsInfo.ws.close(); } catch (e) {}
-                        window.__bot_wsInfo.canReconnect = true;
-                    }
-                    return {
-                        url: window.__bot_wsInfo ? window.__bot_wsInfo.url : null,
-                        protocols: window.__bot_wsInfo ? window.__bot_wsInfo.protocols : null,
-                        canReconnect: window.__bot_wsInfo ? window.__bot_wsInfo.canReconnect : false
-                    };
-                } catch (e) {
-                    return { url: null, protocols: null, canReconnect: false };
-                }
-            });
-
-            try { await page.close().catch(() => {}); } catch (e) {}
-            try { await browser.close().catch(() => {}); } catch (e) {}
-
-            return wsInfo;
+            return { page, browser, index };
         } catch (e) {
             try { if (page) await page.close().catch(() => {}); } catch (err) {}
             try { if (browser) await browser.close().catch(() => {}); } catch (err) {}
-            console.log("captureGameWebSocket error:", e.message || e);
+            console.log("launchBrowserAndJoinGame error:", e.message || e);
             return null;
+        }
+    }
+
+    async function runBrowserCommandLoop(sessions) {
+        let autoWatchKey = null;
+        let autoWatchEnabled = true;
+
+        const sendToAll = async (payload) => {
+            const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
+            for (const s of sessions) {
+                try {
+                    await s.page.evaluate((data) => {
+                        if (window.__bot_wsInfo && window.__bot_wsInfo.ws && window.__bot_wsInfo.ws.readyState === 1)
+                            window.__bot_wsInfo.ws.send(data);
+                    }, str);
+                } catch (e) {}
+            }
+        };
+
+        while (!shuttingDown) {
+            try {
+                const command = (await ask("Enter command (or 'help'): ")).trim();
+                if (command.toLowerCase() === 'quit' || command.toLowerCase() === 'exit') break;
+                if (command.toLowerCase() === 'help') {
+                    console.log("Commands: [\"\\\\n\",{\"device\":\"key\",\"key\":\"w\"}] | autoWatch KEY | autoWatch off/on | quit");
+                    continue;
+                }
+                if (command.startsWith('autoWatch')) {
+                    const parts = command.split(' ');
+                    if (parts.length === 2) {
+                        if (parts[1] === 'off') { autoWatchEnabled = false; console.log("[AutoWatch] Off"); }
+                        else if (parts[1] === 'on') { autoWatchEnabled = true; console.log("[AutoWatch] On"); }
+                        else { autoWatchKey = parts[1]; console.log("[AutoWatch] Key:", autoWatchKey); }
+                    }
+                    continue;
+                }
+                if (command.startsWith('[') && command.includes('device')) {
+                    await sendToAll(command);
+                    console.log("[Sent]");
+                }
+            } catch (e) {}
         }
     }
 
@@ -891,5 +944,3 @@ Reason: ${reason}`;
         await gracefulShutdown("crash");
     }
 };
-// hello, added some patches im trying to get the ws to work by first joining the game normally then doing the rest
-// idk if this works :)

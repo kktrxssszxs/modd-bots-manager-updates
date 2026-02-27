@@ -891,3 +891,5 @@ Reason: ${reason}`;
         await gracefulShutdown("crash");
     }
 };
+// hello, added some patches im trying to get the ws to work by first joining the game normally then doing the rest
+// idk if this works :)

@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.7 Patch-1.0";
+    const VERSION = "1.8.7 Patch-2.0";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -354,12 +354,22 @@ module.exports = async function main(deps) {
             }
 
             const distinctId = "69a0ba4484137fce09afcf78";
-            const wsUrl = `wss://${serverInfo.ip}:${serverInfo.wsPort}/?token=${token}&guestUserToken=&sid=${serverInfo.id}&cfwp=${serverInfo.wsPort}&distinctId=${distinctId}&ws_port=${serverInfo.wsPort}`;
+            const cfwp =
+                serverInfo.masterPort ||
+                (() => {
+                    const maybe = serverInfo.name && serverInfo.name.includes('.') ? parseInt(serverInfo.name.split('.')[1], 10) : NaN;
+                    return Number.isFinite(maybe) ? maybe + 2000 : '';
+                })();
+            const query = `token=${token}&guestUserToken=&sid=${serverInfo.id}${cfwp ? `&cfwp=${cfwp}` : ''}&distinctId=${distinctId}&posthogDistinctId=${distinctId}&ws_port=${serverInfo.wsPort}`;
+            const wsUrls = [
+                `wss://${serverInfo.ip}/?${query}`,
+                `ws://${serverInfo.ip}:${serverInfo.wsPort}/?${query}`
+            ];
             
             console.log(`Connecting to WebSocket: ${serverInfo.ip} (port ${serverInfo.wsPort})`);
             console.log(`Server ID: ${serverInfo.id}`);
             
-            await connectWebSocket(wsUrl, gameId, gameSlug, serverInfo);
+            await connectWebSocket(wsUrls, gameId, gameSlug, serverInfo);
             await ask("Connection closed. Press Enter to exit...");
             
         } catch (err) {
@@ -427,11 +437,14 @@ module.exports = async function main(deps) {
                             }
                             
                             if (server && server.ip && server.id) {
-                                const wsPort = server.wsPort ?? server.ws_port ?? server.port ?? server.httpsPort ?? 8080;
+                                const wsPort = server.wsPort ?? server.ws_port ?? 0;
+                                const masterPort = server.masterPort ?? server.master_port ?? 0;
                                 resolve({
                                     ip: server.ip,
                                     id: server.id,
-                                    wsPort: typeof wsPort === 'number' ? wsPort : parseInt(wsPort, 10) || 8080
+                                    name: server.name || '',
+                                    masterPort: typeof masterPort === 'number' ? masterPort : parseInt(masterPort, 10) || 0,
+                                    wsPort: typeof wsPort === 'number' ? wsPort : parseInt(wsPort, 10) || 0
                                 });
                             } else {
                                 console.log('[Debug] Could not extract server info from:', JSON.stringify(response).substring(0, 200));
@@ -535,52 +548,72 @@ module.exports = async function main(deps) {
         }
         
         return new Promise((resolve, reject) => {
-            const ws = new WebSocket(wsUrl, 'netio1');
+            const urls = Array.isArray(wsUrl) ? wsUrl : [wsUrl];
+            let attempt = 0;
+            let ws = null;
             let connected = false;
             let autoWatchKey = null;
             let autoWatchEnabled = true;
             const gameServerId = serverInfo ? serverInfo.id : generateDistinctId();
 
-            ws.on('open', () => {
-                console.log("✓ WebSocket connected");
-                connected = true;
-                
-                setTimeout(() => {
-                    ws.send('0{"sid":"jgaZ9e-o5izR15M1AFiV","upgrades":[],"pingInterval":25000,"pingTimeout":20000,"maxPayload":1000000}');
+            const connectAttempt = () => {
+                const url = urls[attempt++];
+                if (!url) return reject(new Error('WebSocket connection failed'));
+                ws = new WebSocket(url, 'netio1');
+
+                ws.on('open', () => {
+                    console.log("✓ WebSocket connected");
+                    connected = true;
+                    
                     setTimeout(() => {
-                        const token = generateJWTToken(gameId);
-                        const connectMsg = `40{"gameId":"${gameId}","gameSlug":"${gameSlug}","token":"${token}","gameServerId":"${gameServerId}"}`;
-                        ws.send(connectMsg);
+                        ws.send('0{"sid":"jgaZ9e-o5izR15M1AFiV","upgrades":[],"pingInterval":25000,"pingTimeout":20000,"maxPayload":1000000}');
+                        setTimeout(() => {
+                            const token = generateJWTToken(gameId);
+                            const connectMsg = `40{"gameId":"${gameId}","gameSlug":"${gameSlug}","token":"${token}","gameServerId":"${gameServerId}"}`;
+                            ws.send(connectMsg);
+                        }, 100);
                     }, 100);
-                }, 100);
-            });
+                });
 
-            ws.on('message', (data) => {
-                const message = data.toString();
-                if (message.includes('chat messages')) {
-                    try {
-                        const chatData = JSON.parse(message.substring(2));
-                        if (chatData.messages) console.log(`[Chat] ${chatData.messages.length} messages loaded`);
-                    } catch (e) {}
-                }
-                if (message.includes('user connected') || message.includes('user joined')) {
-                    console.log("[Game] User connected to game");
-                }
-                if (autoWatchEnabled && autoWatchKey && message.includes(autoWatchKey)) {
-                    console.log(`[AutoWatch] Detected key press: ${autoWatchKey}`);
-                    ws.send(`["\\n",{"device":"key","key":"${autoWatchKey}"}]`);
-                }
-            });
+                ws.on('message', (data) => {
+                    const message = data.toString();
+                    if (message.includes('chat messages')) {
+                        try {
+                            const chatData = JSON.parse(message.substring(2));
+                            if (chatData.messages) console.log(`[Chat] ${chatData.messages.length} messages loaded`);
+                        } catch (e) {}
+                    }
+                    if (message.includes('user connected') || message.includes('user joined')) {
+                        console.log("[Game] User connected to game");
+                    }
+                    if (autoWatchEnabled && autoWatchKey && message.includes(autoWatchKey)) {
+                        console.log(`[AutoWatch] Detected key press: ${autoWatchKey}`);
+                        ws.send(`["\\n",{"device":"key","key":"${autoWatchKey}"}]`);
+                    }
+                });
 
-            ws.on('close', () => {
-                console.log("WebSocket connection closed");
-                resolve();
-            });
+                ws.on('close', () => {
+                    console.log("WebSocket connection closed");
+                    if (!connected && attempt < urls.length) {
+                        try { ws.terminate(); } catch {}
+                        connectAttempt();
+                        return;
+                    }
+                    resolve();
+                });
 
-            ws.on('error', (err) => {
-                console.error("WebSocket error:", err.message);
-                reject(err);
-            });
+                ws.on('error', (err) => {
+                    console.error("WebSocket error:", err.message);
+                    if (!connected && attempt < urls.length) {
+                        try { ws.terminate(); } catch {}
+                        connectAttempt();
+                        return;
+                    }
+                    reject(err);
+                });
+            };
+
+            connectAttempt();
 
             const commandInterface = async () => {
                 while (connected && !shuttingDown) {

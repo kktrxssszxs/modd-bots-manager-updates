@@ -3,8 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.5-newMode Patch-1.0";
-    // forgot to add / to the modd api so it doenst redirect to another request which is breaking ts
+    const VERSION = "1.8.7 Patch-1.0";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -355,7 +354,7 @@ module.exports = async function main(deps) {
             }
 
             const distinctId = "69a0ba4484137fce09afcf78";
-            const wsUrl = `wss://${serverInfo.ip}/?token=${token}&guestUserToken=&sid=${serverInfo.id}&cfwp=${serverInfo.wsPort}&distinctId=${distinctId}&ws_port=${serverInfo.wsPort}`;
+            const wsUrl = `wss://${serverInfo.ip}:${serverInfo.wsPort}/?token=${token}&guestUserToken=&sid=${serverInfo.id}&cfwp=${serverInfo.wsPort}&distinctId=${distinctId}&ws_port=${serverInfo.wsPort}`;
             
             console.log(`Connecting to WebSocket: ${serverInfo.ip} (port ${serverInfo.wsPort})`);
             console.log(`Server ID: ${serverInfo.id}`);
@@ -428,10 +427,11 @@ module.exports = async function main(deps) {
                             }
                             
                             if (server && server.ip && server.id) {
+                                const wsPort = server.wsPort ?? server.ws_port ?? server.port ?? server.httpsPort ?? 8080;
                                 resolve({
                                     ip: server.ip,
                                     id: server.id,
-                                    wsPort: server.wsPort || server.port || server.ws_port || 8080
+                                    wsPort: typeof wsPort === 'number' ? wsPort : parseInt(wsPort, 10) || 8080
                                 });
                             } else {
                                 console.log('[Debug] Could not extract server info from:', JSON.stringify(response).substring(0, 200));
@@ -535,7 +535,7 @@ module.exports = async function main(deps) {
         }
         
         return new Promise((resolve, reject) => {
-            const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(wsUrl, 'netio1');
             let connected = false;
             let autoWatchKey = null;
             let autoWatchEnabled = true;

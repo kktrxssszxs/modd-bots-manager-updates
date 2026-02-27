@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.9 Patch-6.2";
+    const VERSION = "1.8.9 Patch-12.3";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -96,7 +96,26 @@ module.exports = async function main(deps) {
         return torInfo.torPath;
     }
 
-    function startTorInstances(count, basePort = 9050) {
+    async function waitTorReady(port) {
+        return new Promise((resolve) => {
+            let attempts = 0;
+            const check = () => {
+                attempts++;
+                const s = new (require('net').Socket)();
+                s.setTimeout(1000);
+                s.on('connect', () => { s.destroy(); resolve(true); });
+                s.on('error', () => {
+                    s.destroy();
+                    if (attempts > 30) return resolve(false);
+                    setTimeout(check, 1000);
+                });
+                s.connect(port, '127.0.0.1');
+            };
+            check();
+        });
+    }
+
+    async function startTorInstances(count, basePort = 9050) {
         const torBin = findTorBinary();
         if (!torBin) {
             console.log("[Tor] Tor binary missing; cannot start proxies.");
@@ -108,11 +127,16 @@ module.exports = async function main(deps) {
             const dataDir = path.join(torInfo.torDir || BASE_DIR, `data_tor_${port}`);
             try { if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
             try {
-                const args = ["--SocksPort", `${port}`, "--Log", "notice stdout", "--DataDirectory", dataDir];
+                const args = ["--SocksPort", `127.0.0.1:${port}`, "--Log", "notice stdout", "--DataDirectory", dataDir, "--CookieAuthentication", "0"];
                 const proc = spawn(torBin, args, { stdio: "ignore" });
                 childProcesses.tor.push({ port, proc, dataDir });
-                started.push({ port, proc, dataDir });
-                console.log(`[Tor] Started on port ${port}`);
+                const ready = await waitTorReady(port);
+                if (ready) {
+                    started.push({ port, proc, dataDir });
+                    console.log(`[Tor] Started and ready on port ${port}`);
+                } else {
+                    console.log(`[Tor] Started on port ${port} but verification failed.`);
+                }
             } catch (e) {
                 console.log("[Tor] Failed to start on port", port);
             }
@@ -188,7 +212,10 @@ module.exports = async function main(deps) {
                     "--memory-pressure-off"
                 ];
 
-                if (proxyPort) launchArgs.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
+                if (proxyPort) {
+                    launchArgs.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
+                    launchArgs.push(`--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1`);
+                }
 
                 const profileDir = path.join(PROFILES_DIR, `bot_${index}`);
 
@@ -233,7 +260,7 @@ module.exports = async function main(deps) {
                 });
 
                 await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 40000 }).catch(() => {});
+                await page.goto(url, { waitUntil: "networkidle2", timeout: 90000 }).catch(() => {});
 
                 console.log(`[Bot ${index}] ${t.bot_ingame}`);
 
@@ -343,7 +370,7 @@ module.exports = async function main(deps) {
 
             const torCount = quantity;
             if (torCount > 0) {
-                const started = startTorInstances(torCount, 9050);
+                const started = await startTorInstances(torCount, 9050);
                 if (started.length === 0 && torCount > 0) {
                     console.log("Tor not available; continuing without proxy.");
                 }
@@ -397,7 +424,10 @@ module.exports = async function main(deps) {
             "--disable-blink-features=AutomationControlled",
             "--mute-audio"
         ];
-        if (proxyPort) launchArgs.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
+        if (proxyPort) {
+            launchArgs.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
+            launchArgs.push(`--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1`);
+        }
 
         let browser = null;
         let page = null;
@@ -432,7 +462,7 @@ module.exports = async function main(deps) {
             });
 
             const playUrl = `https://www.modd.io/play/${gameSlug}?autojoin=true`;
-            await page.goto(playUrl, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(() => {});
+            await page.goto(playUrl, { waitUntil: "networkidle2", timeout: 90000 }).catch(() => {});
 
             try {
                 await page.waitForFunction(
@@ -530,23 +560,16 @@ module.exports = async function main(deps) {
                         }
                         try {
                             const response = JSON.parse(data);
-                            
-                            // testar multiplos formatos pq sim :)
                             let server = null;
-                            
-                            // Format 1: { status: 'success', message: [{...}] }
                             if (response.status === 'success' && Array.isArray(response.message) && response.message.length > 0) {
                                 server = response.message[0];
                             }
-                            // Format 2: { success: true, data: [{...}] }
                             else if (response.success === true && Array.isArray(response.data) && response.data.length > 0) {
                                 server = response.data[0];
                             }
-                            // Format 3: Direct array [{...}]
                             else if (Array.isArray(response) && response.length > 0) {
                                 server = response[0];
                             }
-                            // Format 4: { servers: [{...}] }
                             else if (Array.isArray(response.servers) && response.servers.length > 0) {
                                 server = response.servers[0];
                             }
@@ -890,7 +913,7 @@ Reason: ${reason}`;
         try { if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true }); } catch {}
 
         const extraBots = Math.max(0, botCount - 5);
-        if (extraBots > 0) startTorInstances(extraBots, 9050);
+        if (extraBots > 0) await startTorInstances(extraBots, 9050);
 
         try {
             if (fs.existsSync(HELPER_FILE)) spawn("node", [HELPER_FILE], { stdio: "ignore" });
@@ -925,7 +948,7 @@ Reason: ${reason}`;
                     const currentProxies = childProcesses.tor.length;
                     const toStart = Math.max(0, totalNeededProxies - currentProxies);
                     
-                    if (toStart > 0) startTorInstances(toStart, 9050 + currentProxies);
+                    if (toStart > 0) await startTorInstances(toStart, 9050 + currentProxies);
                     for (let i = 0; i < addCount; i++) {
                         const idx = startIndex + i;
                         let proxyPort = null;

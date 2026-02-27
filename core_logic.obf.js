@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.7 Patch-2.0";
+    const VERSION = "1.8.9 Patch-2.0";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -338,44 +338,105 @@ module.exports = async function main(deps) {
                 return await gracefulShutdown("invalid_game_info");
             }
 
-            console.log("Fetching server information...");
-            const serverInfo = await fetchServerInfo(gameId);
-            if (!serverInfo) {
-                console.log("Failed to fetch server information. Check Game ID and network.");
+            console.log("Spinning up browser to capture WebSocket URL...");
+            const wsInfo = await captureGameWebSocket(gameSlug);
+            if (!wsInfo || !wsInfo.url) {
+                console.log("Failed to capture game WebSocket URL.");
                 await ask("Press Enter to exit...");
-                return await gracefulShutdown("server_fetch_failed");
+                return await gracefulShutdown("ws_url_capture_failed");
             }
 
-            const token = generateJWTToken(gameId);
-            if (!token) {
-                console.log("Failed to generate JWT token.");
-                await ask("Press Enter to exit...");
-                return await gracefulShutdown("token_generation_failed");
-            }
-
-            const distinctId = "69a0ba4484137fce09afcf78";
-            const cfwp =
-                serverInfo.masterPort ||
-                (() => {
-                    const maybe = serverInfo.name && serverInfo.name.includes('.') ? parseInt(serverInfo.name.split('.')[1], 10) : NaN;
-                    return Number.isFinite(maybe) ? maybe + 2000 : '';
-                })();
-            const query = `token=${token}&guestUserToken=&sid=${serverInfo.id}${cfwp ? `&cfwp=${cfwp}` : ''}&distinctId=${distinctId}&posthogDistinctId=${distinctId}&ws_port=${serverInfo.wsPort}`;
-            const wsUrls = [
-                `wss://${serverInfo.ip}/?${query}`,
-                `ws://${serverInfo.ip}:${serverInfo.wsPort}/?${query}`
-            ];
+            console.log(`Captured WS URL: ${wsInfo.url}`);
             
-            console.log(`Connecting to WebSocket: ${serverInfo.ip} (port ${serverInfo.wsPort})`);
-            console.log(`Server ID: ${serverInfo.id}`);
-            
-            await connectWebSocket(wsUrls, gameId, gameSlug, serverInfo);
+            await connectWebSocket(wsInfo.url, gameId, gameSlug, null, !!wsInfo.canReconnect);
             await ask("Connection closed. Press Enter to exit...");
             
         } catch (err) {
             console.error("WebSocket mode error:", err.message);
             await ask("Press Enter to exit...");
             await gracefulShutdown("websocket_error");
+        }
+    }
+
+    async function captureGameWebSocket(gameSlug) {
+        const chromePath = findChrome();
+        if (!chromePath) {
+            console.log(t.chrome_missing);
+            return null;
+        }
+
+        let browser = null;
+        let page = null;
+
+        try {
+            browser = await puppeteer.launch({
+                executablePath: chromePath,
+                headless: "new",
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--mute-audio"
+                ]
+            });
+
+            page = await browser.newPage();
+
+            await page.evaluateOnNewDocument(() => {
+                const OriginalWS = window.WebSocket;
+                window.__bot_wsInfo = { url: null, protocols: null, canReconnect: false, ws: null };
+                window.WebSocket = function (url, protocols) {
+                    const ws = new OriginalWS(url, protocols);
+                    try {
+                        if (url && typeof url === "string" && url.includes("modd.io") && !url.includes("chat.modd.io") && !window.__bot_wsInfo.url) {
+                            window.__bot_wsInfo.url = url;
+                            window.__bot_wsInfo.protocols = protocols;
+                            window.__bot_wsInfo.ws = ws;
+                        }
+                    } catch (e) {}
+                    return ws;
+                };
+                window.WebSocket.prototype = OriginalWS.prototype;
+                Object.keys(OriginalWS).forEach(k => {
+                    try { window.WebSocket[k] = OriginalWS[k]; } catch (e) {}
+                });
+            });
+
+            const playUrl = `https://www.modd.io/play/${gameSlug}?autojoin=true`;
+            await page.goto(playUrl, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(() => {});
+
+            try {
+                await page.waitForFunction(
+                    () => window.__bot_wsInfo && window.__bot_wsInfo.url,
+                    { timeout: 60000 }
+                );
+            } catch (e) {}
+
+            const wsInfo = await page.evaluate(() => {
+                try {
+                    if (window.__bot_wsInfo && window.__bot_wsInfo.ws) {
+                        try { window.__bot_wsInfo.ws.close(); } catch (e) {}
+                        window.__bot_wsInfo.canReconnect = true;
+                    }
+                    return {
+                        url: window.__bot_wsInfo ? window.__bot_wsInfo.url : null,
+                        protocols: window.__bot_wsInfo ? window.__bot_wsInfo.protocols : null,
+                        canReconnect: window.__bot_wsInfo ? window.__bot_wsInfo.canReconnect : false
+                    };
+                } catch (e) {
+                    return { url: null, protocols: null, canReconnect: false };
+                }
+            });
+
+            try { await page.close().catch(() => {}); } catch (e) {}
+            try { await browser.close().catch(() => {}); } catch (e) {}
+
+            return wsInfo;
+        } catch (e) {
+            try { if (page) await page.close().catch(() => {}); } catch (err) {}
+            try { if (browser) await browser.close().catch(() => {}); } catch (err) {}
+            console.log("captureGameWebSocket error:", e.message || e);
+            return null;
         }
     }
 
@@ -538,7 +599,7 @@ module.exports = async function main(deps) {
                Math.floor(Math.random() * 9000) + 1000;
     }
 
-    async function connectWebSocket(wsUrl, gameId, gameSlug, serverInfo) {
+    async function connectWebSocket(wsUrl, gameId, gameSlug, serverInfo, useReconnect) {
         let WebSocket;
         try {
             WebSocket = require('ws');
@@ -559,7 +620,8 @@ module.exports = async function main(deps) {
             const connectAttempt = () => {
                 const url = urls[attempt++];
                 if (!url) return reject(new Error('WebSocket connection failed'));
-                ws = new WebSocket(url, 'netio1');
+                const protocols = useReconnect ? ['netio1', 'reconnect'] : 'netio1';
+                ws = new WebSocket(url, protocols);
 
                 ws.on('open', () => {
                     console.log("✓ WebSocket connected");

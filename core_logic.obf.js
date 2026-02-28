@@ -3,8 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.9 Patch-16";
-    // updated disc webhook, and added minor changes (old comment)
+    const VERSION = "2.0.0 Fast-Patch";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -166,14 +165,7 @@ module.exports = async function main(deps) {
     }
 
     function reduceMemory(pid) {
-        if (process.platform === 'win32' && pid) {
-            try {
-                exec(`powershell -Command "$p = Get-Process -Id ${pid} -EA SilentlyContinue; if($p){$p.MinWorkingSet = 0}"`, { 
-                    stdio: 'ignore', 
-                    timeout: 2000 
-                });
-            } catch (e) {}
-        }
+        return;
     }
 
     async function runBot(index, url, proxyPort = null) {
@@ -203,14 +195,21 @@ module.exports = async function main(deps) {
                     "--disable-sync",
                     "--no-first-run",
                     "--no-default-browser-check",
-                    "--window-size=640,480",
+                    "--window-size=320,240",
                     "--window-position=0,0",
                     "--aggressive-cache-discard",
                     "--disable-cache",
                     "--disable-application-cache",
                     "--disable-offline-load-stale-cache",
                     "--disk-cache-size=0",
-                    "--memory-pressure-off"
+                    "--memory-pressure-off",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--renderer-process-limit=1",
+                    "--js-flags=\"--max-old-space-size=256\"",
+                    "--disable-background-timer-throttling",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-renderer-backgrounding",
+                    "--disable-ipc-flooding-protection"
                 ];
 
                 if (proxyPort) {
@@ -226,7 +225,7 @@ module.exports = async function main(deps) {
                     userDataDir: profileDir,
                     args: launchArgs,
                     ignoreDefaultArgs: ["--enable-automation"],
-                    defaultViewport: { width: 640, height: 480 },
+                    defaultViewport: { width: 320, height: 240 },
                     protocolTimeout: 300000 
                 }).catch(err => {
                     console.error(`[Bot ${index}] Launch failed:`, err.message);
@@ -261,11 +260,9 @@ module.exports = async function main(deps) {
                 });
 
                 await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                await page.goto(url, { waitUntil: "networkidle2", timeout: 90000 }).catch(() => {});
+                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
 
                 console.log(`[Bot ${index}] ${t.bot_ingame}`);
-
-                reduceMemory(browserPid);
 
                 await new Promise(r => setTimeout(r, 1500));
 
@@ -300,7 +297,7 @@ module.exports = async function main(deps) {
                         
                         while (watching && !shuttingDown && checks < 60) {
                             checks++;
-                            await new Promise(r => setTimeout(r, 1500));
+                            await new Promise(r => setTimeout(r, 1000));
                             
                             try {
                                 watching = await page.evaluate(() => {
@@ -323,10 +320,6 @@ module.exports = async function main(deps) {
                         
                     } else {
                         await new Promise(r => setTimeout(r, 1000));
-                    }
-
-                    if (loopCount % 25 === 0) {
-                        reduceMemory(browserPid);
                     }
                 }
 
@@ -463,7 +456,7 @@ module.exports = async function main(deps) {
             });
 
             const playUrl = `https://www.modd.io/play/${gameSlug}?autojoin=true`;
-            await page.goto(playUrl, { waitUntil: "networkidle2", timeout: 90000 }).catch(() => {});
+            await page.goto(playUrl, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
 
             try {
                 await page.waitForFunction(
@@ -808,14 +801,7 @@ module.exports = async function main(deps) {
         const seconds = duration % 60;
         const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100;
 
-        const statsMessage = `**Session Statistics**
-HWID: \`${hwid}\`
-Watched Ads: **${totalAds}**
-Approximate Coins Gained: **${approximateCoins}** _(avg 0.75/ad)_
-Started: ${sessionStart.toLocaleString()}
-Ended: ${sessionEnd.toLocaleString()}
-Duration: ${hours}h ${minutes}m ${seconds}s
-Reason: ${reason}`;
+        const statsMessage = `**Session Statistics**\nHWID: \`${hwid}\`\nWatched Ads: **${totalAds}**\nApproximate Coins Gained: **${approximateCoins}** _(avg 0.75/ad)_\nStarted: ${sessionStart.toLocaleString()}\nEnded: ${sessionEnd.toLocaleString()}\nDuration: ${hours}h ${minutes}m ${seconds}s\nReason: ${reason}`;
 
         sendWebhook(statsMessage, "BotManager");
         console.log("\n" + statsMessage);
@@ -927,7 +913,7 @@ Reason: ${reason}`;
                 proxyPort = childProcesses.tor[torIdx % childProcesses.tor.length].port;
             }
             runBot(i, url, proxyPort);
-            await new Promise(r => setTimeout(r, 5000));
+            await new Promise(r => setTimeout(r, 2000));
         }
 
         (async function interactiveAddLoop() {
@@ -957,7 +943,7 @@ Reason: ${reason}`;
                             proxyPort = childProcesses.tor[(idx - 5) % childProcesses.tor.length].port;
                         }
                         runBot(idx, url, proxyPort);
-                        await new Promise(r => setTimeout(r, 5000));
+                        await new Promise(r => setTimeout(r, 2000));
                     }
                 } catch (e) {}
             }
@@ -968,4 +954,3 @@ Reason: ${reason}`;
         await gracefulShutdown("crash");
     }
 };
-// testing new stuff lets see what happens

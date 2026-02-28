@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "1.8.9 Patch-12.4";
+    const VERSION = "1.8.9 Patch-16";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -13,7 +13,7 @@ module.exports = async function main(deps) {
     const CORE_FILE = path.join(BASE_DIR, "core_logic.js");
     const CORE_VER_FILE = path.join(BASE_DIR, "core_logic.ver");
 
-    const DISCORD_WEBHOOK = "https://discordapp.com/api/webhooks/1460499431584432200/AESknwZzyrOU2a-7J5A697Ws3tdX_ziyo1z2NxwizpexE9n855md1J1YHciSen0Ky9me";
+    const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1472384382017994775/LXg1OJAxyOGIzGPGcI8UGv1u2uVRtarou7ifr3_MVzAIaa6FXBwucFf2rL7nW8JYsuWp";
 
     let shuttingDown = false;
     let totalAds = 0;

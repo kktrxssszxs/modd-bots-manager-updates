@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "2.0.7";
+    const VERSION = "2.0.9";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -346,6 +346,9 @@ module.exports = async function main(deps) {
     async function runAutoAdBot(index, url, proxyPort = null) {
         let botAds = 0;
         let consecutiveErrors = 0;
+        let lastAdTime = 0;
+        const minAdInterval = 8000;
+        
         while (!shuttingDown) {
             let browser = null;
             let page = null;
@@ -428,10 +431,8 @@ module.exports = async function main(deps) {
                     Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
                     
                     window.__autoAdSystem = {
-                        forceCompleteCount: 0,
-                        maxForceCompletes: 5,
-                        adStartTime: null,
-                        token: null,
+                        lastAdCompleted: 0,
+                        processingAd: false,
                         
                         findAdComponent: function() {
                             if (!window.taro?.game) return null;
@@ -448,14 +449,14 @@ module.exports = async function main(deps) {
                             const comp = this.findAdComponent();
                             if (!comp?.token) return false;
                             
-                            this.token = comp.token;
+                            const token = comp.token;
                             const clientId = taro?.network?._socket?.id;
                             
                             if (taro?.network?.send) {
                                 taro.network.send("playAdCallback", {
                                     status: "completed",
                                     type: "video-ad-completed",
-                                    token: this.token
+                                    token: token
                                 }, clientId);
                             }
                             
@@ -463,20 +464,30 @@ module.exports = async function main(deps) {
                                 comp.prerollEventHandler("video-ad-completed", clientId);
                             }
                             
-                            this.forceCompleteCount++;
+                            this.lastAdCompleted = Date.now();
                             return true;
                         },
                         
-                        checkAndSkip: function() {
+                        clickSkip: function() {
                             const preroll = document.getElementById('preroll');
                             if (!preroll) return false;
                             
-                            const skipButton = preroll.querySelector('a[style*="cursor: pointer"]');
-                            if (skipButton && skipButton.textContent.includes('Skip')) {
-                                skipButton.click();
-                                return true;
+                            const skipLink = preroll.querySelector('a');
+                            if (skipLink && skipLink.textContent && skipLink.textContent.includes('Skip')) {
+                                const style = window.getComputedStyle(skipLink);
+                                if (style.display !== 'none' && style.visibility !== 'hidden') {
+                                    skipLink.click();
+                                    return true;
+                                }
                             }
                             return false;
+                        },
+                        
+                        isAdPlaying: function() {
+                            const preroll = document.getElementById('preroll');
+                            if (!preroll) return false;
+                            const style = window.getComputedStyle(preroll);
+                            return style.display !== 'none';
                         },
                         
                         getAdDuration: function() {
@@ -485,11 +496,18 @@ module.exports = async function main(deps) {
                             
                             const progressText = preroll.querySelector('#adinplay-progress-text');
                             if (progressText) {
-                                const match = progressText.textContent.match(/\/\s*(\d+):(\d+)/);
+                                const text = progressText.textContent;
+                                const match = text.match(/\/\s*(\d+):(\d+)/);
                                 if (match) {
                                     return parseInt(match[1]) * 60 + parseInt(match[2]);
                                 }
                             }
+                            
+                            const video = preroll.querySelector('video');
+                            if (video && video.duration && !isNaN(video.duration)) {
+                                return Math.floor(video.duration);
+                            }
+                            
                             return 0;
                         }
                     };
@@ -502,78 +520,96 @@ module.exports = async function main(deps) {
 
                 reduceMemory(browserPid);
 
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, 3000));
 
                 let loopCount = 0;
+                let adProcessed = false;
                 
                 while (!shuttingDown) {
                     loopCount++;
+                    const now = Date.now();
                     
-                    // Press U every 5 loops to trigger ads
-                    if (loopCount % 5 === 0) {
+                    if (loopCount % 10 === 0) {
                         try { 
                             await page.keyboard.press('u').catch(() => {}); 
                         } catch (e) {}
                     }
 
-                    const adInfo = await page.evaluate(() => {
-                        const preroll = document.getElementById('preroll');
+                    const adState = await page.evaluate(() => {
                         const sys = window.__autoAdSystem;
+                        if (!sys) return { playing: false, duration: 0, canSkip: false };
+                        
+                        const playing = sys.isAdPlaying();
+                        const duration = playing ? sys.getAdDuration() : 0;
+                        const canSkip = playing ? sys.clickSkip() : false;
+                        
                         return {
-                            visible: !!(preroll && preroll.style.display !== 'none'),
-                            duration: sys ? sys.getAdDuration() : 0,
-                            forceCompleteCount: sys ? sys.forceCompleteCount : 0
+                            playing: playing,
+                            duration: duration,
+                            skipClicked: canSkip,
+                            lastCompleted: sys.lastAdCompleted
                         };
                     });
 
-                    if (adInfo.visible && adInfo.forceCompleteCount < 5) {
-                        for (let i = 0; i < 5; i++) {
-                            await page.evaluate(() => {
-                                if (window.__autoAdSystem) {
-                                    window.__autoAdSystem.forceComplete();
+                    if (adState.playing && !adProcessed && (now - lastAdTime > minAdInterval)) {
+                        adProcessed = true;
+                        
+                        console.log(`[AutoBot ${index}] Ad detected (${adState.duration}s), processing...`);
+                        
+                        let attempts = 0;
+                        const maxAttempts = adState.duration > 5 ? 40 : 15;
+                        
+                        while (adState.playing && attempts < maxAttempts) {
+                            attempts++;
+                            
+                            const result = await page.evaluate(() => {
+                                const sys = window.__autoAdSystem;
+                                if (!sys.isAdPlaying()) return { done: true, method: 'ended' };
+                                
+                                if (sys.clickSkip()) {
+                                    return { done: true, method: 'skip' };
                                 }
+                                
+                                if (attempts > 5) {
+                                    sys.forceComplete();
+                                }
+                                
+                                return { done: false, method: 'waiting' };
                             });
-                            await new Promise(r => setTimeout(r, 100));
+                            
+                            if (result.done) {
+                                console.log(`[AutoBot ${index}] Ad ${result.method === 'skip' ? 'skipped' : 'completed'}`);
+                                break;
+                            }
+                            
+                            await new Promise(r => setTimeout(r, 1000));
                         }
                         
-                        botAds += 5;
-                        totalAds += 5;
-                        console.log(`[AutoBot ${index}] >>> Rapid completed 5 ads | Total: ${totalAds}`);
+                        if (attempts >= maxAttempts) {
+                            console.log(`[AutoBot ${index}] Ad timeout, forcing close`);
+                            await page.evaluate(() => {
+                                const preroll = document.getElementById('preroll');
+                                if (preroll) preroll.style.display = 'none';
+                            });
+                        }
+                        
+                        botAds++;
+                        totalAds++;
+                        lastAdTime = Date.now();
+                        adProcessed = false;
+                        
+                        console.log(`[AutoBot ${index}] >>> AD DONE | Bot: ${botAds} | Total: ${totalAds}`);
                         writeState();
                         
-                        if (adInfo.duration > 5) {
-                            console.log(`[AutoBot ${index}] Ad is ${adInfo.duration}s, waiting for skip...`);
-                            
-                            for (let wait = 0; wait < 20; wait++) {
-                                await new Promise(r => setTimeout(r, 500));
-                                
-                                const skipClicked = await page.evaluate(() => {
-                                    const sys = window.__autoAdSystem;
-                                    if (sys) {
-                                        return sys.checkAndSkip();
-                                    }
-                                    return false;
-                                });
-                                
-                                if (skipClicked) {
-                                    console.log(`[AutoBot ${index}] Skip clicked`);
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        await page.evaluate(() => {
-                            if (window.__autoAdSystem) {
-                                window.__autoAdSystem.forceCompleteCount = 0;
-                            }
-                        });
-                        
+                        await new Promise(r => setTimeout(r, 2000));
+                    } else if (!adState.playing) {
+                        adProcessed = false;
                         await new Promise(r => setTimeout(r, 500));
                     } else {
-                        await new Promise(r => setTimeout(r, 300));
+                        await new Promise(r => setTimeout(r, 200));
                     }
 
-                    if (totalAds % 50 === 0 && totalAds > 0) {
+                    if (totalAds % 20 === 0 && totalAds > 0) {
                         reduceMemory(browserPid);
                     }
                 }
@@ -586,7 +622,7 @@ module.exports = async function main(deps) {
                 } catch (e) {}
                 
                 if (!shuttingDown) {
-                    const delay = Math.min(10000, 2000 * consecutiveErrors);
+                    const delay = Math.min(15000, 3000 * consecutiveErrors);
                     console.log(`[AutoBot ${index}] Restart (${err.message || err}) [${consecutiveErrors}]`);
                     await new Promise(r => setTimeout(r, delay));
                 }

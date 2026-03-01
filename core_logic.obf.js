@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "2.0.1";
+    const VERSION = "2.0.5";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -426,6 +426,73 @@ module.exports = async function main(deps) {
                     Object.defineProperty(navigator, 'webdriver', { get: () => false });
                     Object.defineProperty(document, 'hidden', { get: () => false });
                     Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+                    
+                    window.__autoAdSystem = {
+                        forceCompleteCount: 0,
+                        maxForceCompletes: 5,
+                        adStartTime: null,
+                        token: null,
+                        
+                        findAdComponent: function() {
+                            if (!window.taro?.game) return null;
+                            for (let key in taro.game) {
+                                try {
+                                    const val = taro.game[key];
+                                    if (val && val.token && val.prerollEventHandler) return val;
+                                } catch(e) {}
+                            }
+                            return null;
+                        },
+                        
+                        forceComplete: function() {
+                            const comp = this.findAdComponent();
+                            if (!comp?.token) return false;
+                            
+                            this.token = comp.token;
+                            const clientId = taro?.network?._socket?.id;
+                            
+                            if (taro?.network?.send) {
+                                taro.network.send("playAdCallback", {
+                                    status: "completed",
+                                    type: "video-ad-completed",
+                                    token: this.token
+                                }, clientId);
+                            }
+                            
+                            if (comp.prerollEventHandler) {
+                                comp.prerollEventHandler("video-ad-completed", clientId);
+                            }
+                            
+                            this.forceCompleteCount++;
+                            return true;
+                        },
+                        
+                        checkAndSkip: function() {
+                            const preroll = document.getElementById('preroll');
+                            if (!preroll) return false;
+                            
+                            const skipButton = preroll.querySelector('a[style*="cursor: pointer"]');
+                            if (skipButton && skipButton.textContent.includes('Skip')) {
+                                skipButton.click();
+                                return true;
+                            }
+                            return false;
+                        },
+                        
+                        getAdDuration: function() {
+                            const preroll = document.getElementById('preroll');
+                            if (!preroll) return 0;
+                            
+                            const progressText = preroll.querySelector('#adinplay-progress-text');
+                            if (progressText) {
+                                const match = progressText.textContent.match(/\/\s*(\d+):(\d+)/);
+                                if (match) {
+                                    return parseInt(match[1]) * 60 + parseInt(match[2]);
+                                }
+                            }
+                            return 0;
+                        }
+                    };
                 });
 
                 await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
@@ -437,99 +504,65 @@ module.exports = async function main(deps) {
 
                 await new Promise(r => setTimeout(r, 2000));
 
-                let lastAdTime = 0;
-                const minAdInterval = 5000;
-                
                 while (!shuttingDown) {
-                    const now = Date.now();
-                    
-                    if (now - lastAdTime < minAdInterval) {
-                        await new Promise(r => setTimeout(r, 500));
-                        continue;
-                    }
+                    const adInfo = await page.evaluate(() => {
+                        const preroll = document.getElementById('preroll');
+                        const sys = window.__autoAdSystem;
+                        return {
+                            visible: !!(preroll && preroll.style.display !== 'none'),
+                            duration: sys ? sys.getAdDuration() : 0,
+                            forceCompleteCount: sys ? sys.forceCompleteCount : 0
+                        };
+                    });
 
-                    let adState = { exists: false, visible: false, canStart: false };
-                    try {
-                        adState = await page.evaluate(() => {
-                            const preroll = document.getElementById('preroll');
-                            const hasAip = !!(window.aiptag && window.aiptag.adplayer);
-                            return {
-                                exists: !!preroll,
-                                visible: !!(preroll && preroll.style.display !== 'none'),
-                                canStart: hasAip
-                            };
-                        });
-                    } catch (e) {
-                        await new Promise(r => setTimeout(r, 1000));
-                        continue;
-                    }
-
-                    if (adState.visible) {
-                        console.log(`[AutoBot ${index}] Ad playing...`);
+                    if (adInfo.visible && adInfo.forceCompleteCount < 5) {
+                        for (let i = 0; i < 5; i++) {
+                            await page.evaluate(() => {
+                                if (window.__autoAdSystem) {
+                                    window.__autoAdSystem.forceComplete();
+                                }
+                            });
+                            await new Promise(r => setTimeout(r, 100));
+                        }
                         
-                        let watching = true;
-                        let checks = 0;
-                        const maxChecks = 80;
+                        botAds += 5;
+                        totalAds += 5;
+                        console.log(`[AutoBot ${index}] >>> Rapid completed 5 ads | Total: ${totalAds}`);
+                        writeState();
                         
-                        while (watching && !shuttingDown && checks < maxChecks) {
-                            checks++;
-                            await new Promise(r => setTimeout(r, 1200));
+                        if (adInfo.duration > 5) {
+                            console.log(`[AutoBot ${index}] Ad is ${adInfo.duration}s, waiting for skip...`);
                             
-                            try {
-                                watching = await page.evaluate(() => {
-                                    const p = document.getElementById('preroll');
-                                    return !!(p && p.style.display !== 'none');
+                            for (let wait = 0; wait < 20; wait++) {
+                                await new Promise(r => setTimeout(r, 500));
+                                
+                                const skipClicked = await page.evaluate(() => {
+                                    const sys = window.__autoAdSystem;
+                                    if (sys) {
+                                        return sys.checkAndSkip();
+                                    }
+                                    return false;
                                 });
-                            } catch (e) {
-                                watching = false;
+                                
+                                if (skipClicked) {
+                                    console.log(`[AutoBot ${index}] Skip clicked`);
+                                    break;
+                                }
                             }
                         }
                         
-                        const oldTotal = totalAds;
-                        botAds++;
-                        totalAds++;
-                        lastAdTime = Date.now();
+                        await page.evaluate(() => {
+                            if (window.__autoAdSystem) {
+                                window.__autoAdSystem.forceCompleteCount = 0;
+                            }
+                        });
                         
-                        console.log(`[AutoBot ${index}] Ad completed | Bot: ${botAds} Total: ${oldTotal}->${totalAds}`);
-                        writeState();
-                        consecutiveErrors = 0;
-                        
-                        await new Promise(r => setTimeout(r, 800));
-                        
-                    } else if (adState.canStart) {
-                        try {
-                            await page.evaluate(() => {
-                                try {
-                                    const preroll = document.getElementById('preroll');
-                                    if (preroll) {
-                                        preroll.style.width = '1px';
-                                        preroll.style.height = '1px';
-                                        preroll.style.position = 'absolute';
-                                        preroll.style.top = '0';
-                                        preroll.style.left = '0';
-                                        preroll.style.opacity = '0.01';
-                                    }
-                                    if (window.aiptag && window.aiptag.adplayer && window.aiptag.cmd && window.aiptag.cmd.player) {
-                                        window.aiptag.cmd.player.push(function() {
-                                            window.aiptag.adplayer.startPreRoll();
-                                        });
-                                        return true;
-                                    }
-                                    return false;
-                                } catch (e) {
-                                    return false;
-                                }
-                            });
-                            console.log(`[AutoBot ${index}] Triggered ad start`);
-                            await new Promise(r => setTimeout(r, 1000));
-                        } catch (e) {
-                            await new Promise(r => setTimeout(r, 500));
-                        }
+                        await new Promise(r => setTimeout(r, 500));
                     } else {
                         await new Promise(r => setTimeout(r, 300));
                     }
 
-                    if (totalAds % 10 === 0 && totalAds > 0) {
+                    if (totalAds % 50 === 0 && totalAds > 0) {
                         reduceMemory(browserPid);
                     }
                 }

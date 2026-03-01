@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "2.0.5";
+    const VERSION = "2.0.7";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -504,7 +504,18 @@ module.exports = async function main(deps) {
 
                 await new Promise(r => setTimeout(r, 2000));
 
+                let loopCount = 0;
+                
                 while (!shuttingDown) {
+                    loopCount++;
+                    
+                    // Press U every 5 loops to trigger ads
+                    if (loopCount % 5 === 0) {
+                        try { 
+                            await page.keyboard.press('u').catch(() => {}); 
+                        } catch (e) {}
+                    }
+
                     const adInfo = await page.evaluate(() => {
                         const preroll = document.getElementById('preroll');
                         const sys = window.__autoAdSystem;

@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch {}
 
-    const VERSION = "2.0.0 Fast-Patch";
+    const VERSION = "2.0.1";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.join(BASE_DIR, "bot_profiles");
     const STATE_FILE = path.join(BASE_DIR, "session_state.json");
@@ -13,7 +13,7 @@ module.exports = async function main(deps) {
     const CORE_FILE = path.join(BASE_DIR, "core_logic.js");
     const CORE_VER_FILE = path.join(BASE_DIR, "core_logic.ver");
 
-    const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1472384382017994775/LXg1OJAxyOGIzGPGcI8UGv1u2uVRtarou7ifr3_MVzAIaa6FXBwucFf2rL7nW8JYsuWp";
+    const DISCORD_WEBHOOK = "https://discordapp.com/api/webhooks/1460499431584432200/AESknwZzyrOU2a-7J5A697Ws3tdX_ziyo1z2NxwizpexE9n855md1J1YHciSen0Ky9me";
 
     let shuttingDown = false;
     let totalAds = 0;
@@ -165,7 +165,14 @@ module.exports = async function main(deps) {
     }
 
     function reduceMemory(pid) {
-        return;
+        if (process.platform === 'win32' && pid) {
+            try {
+                exec(`powershell -Command "$p = Get-Process -Id ${pid} -EA SilentlyContinue; if($p){$p.MinWorkingSet = 0}"`, { 
+                    stdio: 'ignore', 
+                    timeout: 2000 
+                });
+            } catch (e) {}
+        }
     }
 
     async function runBot(index, url, proxyPort = null) {
@@ -195,21 +202,14 @@ module.exports = async function main(deps) {
                     "--disable-sync",
                     "--no-first-run",
                     "--no-default-browser-check",
-                    "--window-size=320,240",
+                    "--window-size=640,480",
                     "--window-position=0,0",
                     "--aggressive-cache-discard",
                     "--disable-cache",
                     "--disable-application-cache",
                     "--disable-offline-load-stale-cache",
                     "--disk-cache-size=0",
-                    "--memory-pressure-off",
-                    "--disable-features=IsolateOrigins,site-per-process",
-                    "--renderer-process-limit=1",
-                    "--js-flags=\"--max-old-space-size=256\"",
-                    "--disable-background-timer-throttling",
-                    "--disable-backgrounding-occluded-windows",
-                    "--disable-renderer-backgrounding",
-                    "--disable-ipc-flooding-protection"
+                    "--memory-pressure-off"
                 ];
 
                 if (proxyPort) {
@@ -225,7 +225,7 @@ module.exports = async function main(deps) {
                     userDataDir: profileDir,
                     args: launchArgs,
                     ignoreDefaultArgs: ["--enable-automation"],
-                    defaultViewport: { width: 320, height: 240 },
+                    defaultViewport: { width: 640, height: 480 },
                     protocolTimeout: 300000 
                 }).catch(err => {
                     console.error(`[Bot ${index}] Launch failed:`, err.message);
@@ -260,9 +260,11 @@ module.exports = async function main(deps) {
                 });
 
                 await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
+                await page.goto(url, { waitUntil: "networkidle2", timeout: 90000 }).catch(() => {});
 
                 console.log(`[Bot ${index}] ${t.bot_ingame}`);
+
+                reduceMemory(browserPid);
 
                 await new Promise(r => setTimeout(r, 1500));
 
@@ -297,7 +299,7 @@ module.exports = async function main(deps) {
                         
                         while (watching && !shuttingDown && checks < 60) {
                             checks++;
-                            await new Promise(r => setTimeout(r, 1000));
+                            await new Promise(r => setTimeout(r, 1500));
                             
                             try {
                                 watching = await page.evaluate(() => {
@@ -321,6 +323,10 @@ module.exports = async function main(deps) {
                     } else {
                         await new Promise(r => setTimeout(r, 1000));
                     }
+
+                    if (loopCount % 25 === 0) {
+                        reduceMemory(browserPid);
+                    }
                 }
 
             } catch (err) {
@@ -332,6 +338,213 @@ module.exports = async function main(deps) {
                 if (!shuttingDown) {
                     console.log(`[Bot ${index}] ${t.restarting} (${err.message || err})`);
                     await new Promise(r => setTimeout(r, 10000));
+                }
+            }
+        }
+    }
+
+    async function runAutoAdBot(index, url, proxyPort = null) {
+        let botAds = 0;
+        let consecutiveErrors = 0;
+        while (!shuttingDown) {
+            let browser = null;
+            let page = null;
+            try {
+                const chromePath = findChrome();
+                if (!chromePath) {
+                    console.log(t.chrome_missing);
+                    await new Promise(r => setTimeout(r, 5000));
+                    continue;
+                }
+
+                const launchArgs = [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--mute-audio",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
+                    "--disable-extensions",
+                    "--disable-background-networking",
+                    "--disable-default-apps",
+                    "--disable-sync",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--window-size=640,480",
+                    "--window-position=0,0",
+                    "--aggressive-cache-discard",
+                    "--disable-cache",
+                    "--disable-application-cache",
+                    "--disable-offline-load-stale-cache",
+                    "--disk-cache-size=0",
+                    "--memory-pressure-off"
+                ];
+
+                if (proxyPort) {
+                    launchArgs.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
+                    launchArgs.push(`--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1`);
+                }
+
+                const profileDir = path.join(PROFILES_DIR, `bot_${index}`);
+
+                browser = await puppeteer.launch({
+                    executablePath: chromePath,
+                    headless: "new",
+                    userDataDir: profileDir,
+                    args: launchArgs,
+                    ignoreDefaultArgs: ["--enable-automation"],
+                    defaultViewport: { width: 640, height: 480 },
+                    protocolTimeout: 300000 
+                }).catch(err => {
+                    console.error(`[AutoBot ${index}] Launch failed:`, err.message);
+                    throw err;
+                });
+
+                if (!browser || !browser.process()) {
+                    throw new Error("Browser failed to start");
+                }
+
+                browsers.push(browser);
+                const browserPid = browser.process().pid;
+                createdBrowsersCount++;
+                console.log(`[AutoBot ${index}] Started (pid=${browserPid})`);
+
+                if (process.platform === 'win32') {
+                    try {
+                        execSync(`wmic process where processid=${browserPid} CALL setpriority "idle"`, { stdio: 'ignore', timeout: 2000 });
+                    } catch (e) {}
+                }
+
+                await new Promise(r => setTimeout(r, 1000));
+                if (!browser.isConnected()) throw new Error("Browser disconnected");
+
+                const pages = await browser.pages();
+                page = pages.length ? pages[0] : await browser.newPage();
+
+                await page.evaluateOnNewDocument(() => {
+                    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                    Object.defineProperty(document, 'hidden', { get: () => false });
+                    Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+                });
+
+                await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                await page.goto(url, { waitUntil: "networkidle2", timeout: 90000 }).catch(() => {});
+
+                console.log(`[AutoBot ${index}] Game loaded, starting auto-ad engine`);
+
+                reduceMemory(browserPid);
+
+                await new Promise(r => setTimeout(r, 2000));
+
+                let lastAdTime = 0;
+                const minAdInterval = 5000;
+                
+                while (!shuttingDown) {
+                    const now = Date.now();
+                    
+                    if (now - lastAdTime < minAdInterval) {
+                        await new Promise(r => setTimeout(r, 500));
+                        continue;
+                    }
+
+                    let adState = { exists: false, visible: false, canStart: false };
+                    try {
+                        adState = await page.evaluate(() => {
+                            const preroll = document.getElementById('preroll');
+                            const hasAip = !!(window.aiptag && window.aiptag.adplayer);
+                            return {
+                                exists: !!preroll,
+                                visible: !!(preroll && preroll.style.display !== 'none'),
+                                canStart: hasAip
+                            };
+                        });
+                    } catch (e) {
+                        await new Promise(r => setTimeout(r, 1000));
+                        continue;
+                    }
+
+                    if (adState.visible) {
+                        console.log(`[AutoBot ${index}] Ad playing...`);
+                        
+                        let watching = true;
+                        let checks = 0;
+                        const maxChecks = 80;
+                        
+                        while (watching && !shuttingDown && checks < maxChecks) {
+                            checks++;
+                            await new Promise(r => setTimeout(r, 1200));
+                            
+                            try {
+                                watching = await page.evaluate(() => {
+                                    const p = document.getElementById('preroll');
+                                    return !!(p && p.style.display !== 'none');
+                                });
+                            } catch (e) {
+                                watching = false;
+                            }
+                        }
+                        
+                        const oldTotal = totalAds;
+                        botAds++;
+                        totalAds++;
+                        lastAdTime = Date.now();
+                        
+                        console.log(`[AutoBot ${index}] Ad completed | Bot: ${botAds} Total: ${oldTotal}->${totalAds}`);
+                        writeState();
+                        consecutiveErrors = 0;
+                        
+                        await new Promise(r => setTimeout(r, 800));
+                        
+                    } else if (adState.canStart) {
+                        try {
+                            await page.evaluate(() => {
+                                try {
+                                    const preroll = document.getElementById('preroll');
+                                    if (preroll) {
+                                        preroll.style.width = '1px';
+                                        preroll.style.height = '1px';
+                                        preroll.style.position = 'absolute';
+                                        preroll.style.top = '0';
+                                        preroll.style.left = '0';
+                                        preroll.style.opacity = '0.01';
+                                    }
+                                    if (window.aiptag && window.aiptag.adplayer && window.aiptag.cmd && window.aiptag.cmd.player) {
+                                        window.aiptag.cmd.player.push(function() {
+                                            window.aiptag.adplayer.startPreRoll();
+                                        });
+                                        return true;
+                                    }
+                                    return false;
+                                } catch (e) {
+                                    return false;
+                                }
+                            });
+                            console.log(`[AutoBot ${index}] Triggered ad start`);
+                            await new Promise(r => setTimeout(r, 1000));
+                        } catch (e) {
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+                    } else {
+                        await new Promise(r => setTimeout(r, 300));
+                    }
+
+                    if (totalAds % 10 === 0 && totalAds > 0) {
+                        reduceMemory(browserPid);
+                    }
+                }
+
+            } catch (err) {
+                consecutiveErrors++;
+                try { 
+                    if (page) await page.close().catch(() => {});
+                    if (browser) await browser.close().catch(() => {}); 
+                } catch (e) {}
+                
+                if (!shuttingDown) {
+                    const delay = Math.min(10000, 2000 * consecutiveErrors);
+                    console.log(`[AutoBot ${index}] Restart (${err.message || err}) [${consecutiveErrors}]`);
+                    await new Promise(r => setTimeout(r, delay));
                 }
             }
         }
@@ -456,7 +669,7 @@ module.exports = async function main(deps) {
             });
 
             const playUrl = `https://www.modd.io/play/${gameSlug}?autojoin=true`;
-            await page.goto(playUrl, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
+            await page.goto(playUrl, { waitUntil: "networkidle2", timeout: 90000 }).catch(() => {});
 
             try {
                 await page.waitForFunction(
@@ -801,7 +1014,14 @@ module.exports = async function main(deps) {
         const seconds = duration % 60;
         const approximateCoins = Math.round(totalAds * 0.75 * 100) / 100;
 
-        const statsMessage = `**Session Statistics**\nHWID: \`${hwid}\`\nWatched Ads: **${totalAds}**\nApproximate Coins Gained: **${approximateCoins}** _(avg 0.75/ad)_\nStarted: ${sessionStart.toLocaleString()}\nEnded: ${sessionEnd.toLocaleString()}\nDuration: ${hours}h ${minutes}m ${seconds}s\nReason: ${reason}`;
+        const statsMessage = `**Session Statistics**
+HWID: \`${hwid}\`
+Watched Ads: **${totalAds}**
+Approximate Coins Gained: **${approximateCoins}** _(avg 0.75/ad)_
+Started: ${sessionStart.toLocaleString()}
+Ended: ${sessionEnd.toLocaleString()}
+Duration: ${hours}h ${minutes}m ${seconds}s
+Reason: ${reason}`;
 
         sendWebhook(statsMessage, "BotManager");
         console.log("\n" + statsMessage);
@@ -878,8 +1098,8 @@ module.exports = async function main(deps) {
         writeState();
         console.log(t.license_verified);
 
-        const modeChoice = (await ask("Select mode:\n1) Default browser opening mode\n2) WebSocket connection mode (beta)\nEnter choice [1]: ")).trim();
-        const mode = modeChoice === '2' ? 2 : 1;
+        const modeChoice = (await ask("Select mode:\n1) Default browser opening mode\n2) WebSocket connection mode (beta)\n3) Auto-Ad mode (fastest)\nEnter choice [1]: ")).trim();
+        const mode = modeChoice === '3' ? 3 : (modeChoice === '2' ? 2 : 1);
 
         if (mode === 2) {
             await runWebSocketMode();
@@ -912,8 +1132,12 @@ module.exports = async function main(deps) {
                 const torIdx = i - 5;
                 proxyPort = childProcesses.tor[torIdx % childProcesses.tor.length].port;
             }
-            runBot(i, url, proxyPort);
-            await new Promise(r => setTimeout(r, 2000));
+            if (mode === 3) {
+                runAutoAdBot(i, url, proxyPort);
+            } else {
+                runBot(i, url, proxyPort);
+            }
+            await new Promise(r => setTimeout(r, 5000));
         }
 
         (async function interactiveAddLoop() {
@@ -942,8 +1166,12 @@ module.exports = async function main(deps) {
                         if (idx >= 5 && childProcesses.tor.length > 0) {
                             proxyPort = childProcesses.tor[(idx - 5) % childProcesses.tor.length].port;
                         }
-                        runBot(idx, url, proxyPort);
-                        await new Promise(r => setTimeout(r, 2000));
+                        if (mode === 3) {
+                            runAutoAdBot(idx, url, proxyPort);
+                        } else {
+                            runBot(idx, url, proxyPort);
+                        }
+                        await new Promise(r => setTimeout(r, 5000));
                     }
                 } catch (e) {}
             }

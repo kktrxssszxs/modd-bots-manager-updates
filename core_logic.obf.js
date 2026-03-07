@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "4.0.9";
+    const VERSION = "4.1.1";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -58,35 +58,33 @@ module.exports = async function main(deps) {
     if (window.__AIPBotActive) return;
     window.__AIPBotActive = true;
     
-    console.log('[AIP Bot] Starting v3 - Fixed U press...');
+    console.log('[AIP Bot] Starting - Spam Mode');
     
-    let isProcessing = false;
     let lastMove = 0;
+    let lastU = 0;
     const processedTokens = new Set();
     
     function findAdComponent() {
-        const locations = [
-            () => window.taro?.game?.adComponent,
-            () => window.taro?.game?.data?.adComponent,
-            () => window.aiptag?.adplayer,
-            () => window.aipPlayer,
-            () => window.game?.adComponent,
-            () => window.adComponent,
-            () => window.adplayer
+        // Fast direct checks
+        const checks = [
+            window.taro?.game?.adComponent,
+            window.taro?.game?.data?.adComponent,
+            window.aiptag?.adplayer,
+            window.aipPlayer,
+            window.game?.adComponent,
+            window.adComponent,
+            window.adplayer
         ];
         
-        for (let getter of locations) {
-            try {
-                const result = getter();
-                if (result && (result.token || result.adToken || result._token || 
-                    result.prerollEventHandler || result.onAdComplete || result.complete)) {
-                    return result;
-                }
-            } catch(e) {}
+        for (let comp of checks) {
+            if (comp && (comp.token || comp.adToken || comp._token || 
+                comp.prerollEventHandler || comp.onAdComplete || comp.complete)) {
+                return comp;
+            }
         }
         
-        // Deep search
-        function deepSearch(obj, depth = 0, maxDepth = 4, visited = new Set()) {
+        // Quick deep search
+        function deepSearch(obj, depth = 0, maxDepth = 3, visited = new Set()) {
             if (depth > maxDepth || !obj || visited.has(obj)) return null;
             visited.add(obj);
             try {
@@ -113,25 +111,17 @@ module.exports = async function main(deps) {
         } catch(e) { return 'bot-' + Math.random().toString(36).substr(2, 5); }
     }
     
-    function getNetworkSend() {
-        try { 
-            return window.taro?.network?.send || 
-                   window.taro?.network?.socket?.emit ||
-                   window.game?.network?.send || 
-                   window.socket?.emit; 
-        } catch(e) { return null; }
-    }
-    
     window.completeAd = function() {
         const comp = findAdComponent();
         if (!comp) return false;
         
         const token = comp.token || comp.adToken || comp._token || comp.currentToken;
-        if (token && processedTokens.has(token)) return true;
-        if (token) processedTokens.add(token);
+        if (token) {
+            if (processedTokens.has(token)) return true;
+            processedTokens.add(token);
+        }
         
         const cid = getClientId();
-        const net = getNetworkSend();
         let success = false;
         
         try {
@@ -147,15 +137,11 @@ module.exports = async function main(deps) {
                 comp.complete();
                 success = true;
             }
-            if (net) {
-                net('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
-                net('adCompleted', { token, clientId: cid, reward: true, status: 'completed' });
+            if (window.taro?.network?.send) {
+                window.taro.network.send('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
+                window.taro.network.send('adCompleted', { token, clientId: cid, reward: true, status: 'completed' });
                 success = true;
             }
-            ['video-ad-completed', 'adCompleted', 'aipAdComplete'].forEach(ev => {
-                window.dispatchEvent(new CustomEvent(ev, { detail: { token, clientId: cid } }));
-            });
-            
             if (comp.token) comp.token = null;
             if (comp.adToken) comp.adToken = null;
         } catch(e) {}
@@ -163,183 +149,50 @@ module.exports = async function main(deps) {
         return success;
     };
     
-    // FIXED: More realistic U key press that targets the game canvas
-    function pressU() {
-        // Try multiple targets: window, document, canvas, and game container
-        const targets = [
-            window,
-            document,
-            document.body,
-            document.querySelector('canvas'),
-            document.querySelector('#game-container'),
-            document.querySelector('#game'),
-            document.activeElement
-        ].filter(Boolean);
+    // SPAM U KEY - no detection, just constant spam
+    function spamU() {
+        const targets = [window, document, document.body, document.querySelector('canvas')].filter(Boolean);
         
-        const keyProps = {
+        const evt = new KeyboardEvent('keydown', {
             key: 'u',
             code: 'KeyU',
             keyCode: 85,
             which: 85,
-            charCode: 0,
-            location: 0,
             bubbles: true,
-            cancelable: true,
-            composed: true,
-            isTrusted: false, // Can't make this true, but some games don't check
-            ctrlKey: false,
-            shiftKey: false,
-            altKey: false,
-            metaKey: false,
-            repeat: false
-        };
-        
-        console.log('[AIP Bot] Pressing U on', targets.length, 'targets');
-        
-        targets.forEach(target => {
-            try {
-                // KeyDown
-                const down = new KeyboardEvent('keydown', keyProps);
-                Object.defineProperty(down, 'isTrusted', { value: true, writable: false }); // Try to spoof
-                target.dispatchEvent(down);
-                
-                // KeyPress (deprecated but some old games use it)
-                const press = new KeyboardEvent('keypress', {
-                    ...keyProps,
-                    charCode: 117,
-                    keyCode: 117
-                });
-                Object.defineProperty(press, 'isTrusted', { value: true, writable: false });
-                target.dispatchEvent(press);
-                
-                // KeyUp
-                setTimeout(() => {
-                    const up = new KeyboardEvent('keyup', keyProps);
-                    Object.defineProperty(up, 'isTrusted', { value: true, writable: false });
-                    target.dispatchEvent(up);
-                }, 50);
-                
-            } catch(e) {}
+            cancelable: true
         });
         
-        // Also try direct game input if available
-        try {
-            if (window.taro?.input?.keyDown) {
-                window.taro.input.keyDown('u');
-                setTimeout(() => window.taro.input.keyUp('u'), 50);
-                console.log('[AIP Bot] Used taro.input');
-            }
-            if (window.game?.input?.keyDown) {
-                window.game.input.keyDown('u');
-                setTimeout(() => window.game.input.keyUp('u'), 50);
-                console.log('[AIP Bot] Used game.input');
-            }
-        } catch(e) {}
+        targets.forEach(t => t.dispatchEvent(evt));
+        
+        // Keyup immediately after
+        setTimeout(() => {
+            const up = new KeyboardEvent('keyup', {
+                key: 'u',
+                code: 'KeyU',
+                keyCode: 85,
+                which: 85,
+                bubbles: true,
+                cancelable: true
+            });
+            targets.forEach(t => t.dispatchEvent(up));
+        }, 10);
     }
     
-    // Alternative: Directly trigger ad via aiptag if available
-    function triggerAd() {
-        console.log('[AIP Bot] Trying to trigger ad directly...');
+    // FAST LOOP - spam U and check for ad to complete
+    function fastLoop() {
+        // Spam U every 100ms (10 times per second)
+        if (Date.now() - lastU > 100) {
+            spamU();
+            lastU = Date.now();
+        }
         
-        try {
-            // Try aiptag method
-            if (window.aiptag?.adplayer?.startPreRoll) {
-                window.aiptag.adplayer.startPreRoll();
-                console.log('[AIP Bot] Called aiptag.adplayer.startPreRoll()');
-                return true;
-            }
-            
-            // Try to find and click ad buttons
-            const adButtons = document.querySelectorAll(
-                'button[class*="ad"], button[class*="watch"], div[class*="ad"], ' +
-                '[id*="ad-button"], [class*="ad-button"], [class*="watch-ad"]'
-            );
-            
-            for (let btn of adButtons) {
-                if (btn.offsetParent !== null) {
-                    btn.click();
-                    console.log('[AIP Bot] Clicked ad button');
-                    return true;
-                }
-            }
-            
-        } catch(e) {}
+        // Try to complete ad EVERY frame (no delay)
+        const result = window.completeAd();
+        if (result) {
+            console.log('[AIP Bot] Ad completed!');
+        }
         
-        return false;
-    }
-    
-    // Main ad handling loop
-    let adCheckInterval = null;
-    
-    function startAdWatch() {
-        if (adCheckInterval) return;
-        
-        adCheckInterval = setInterval(async () => {
-            if (isProcessing) return;
-            
-            // Check for existing ad DOM
-            const hasAdDOM = document.querySelector('iframe[src*="googleads"], iframe[src*="ad"], video, [id*="aip"], [class*="ad"]');
-            
-            if (hasAdDOM) {
-                console.log('[AIP Bot] Ad already playing, completing...');
-                isProcessing = true;
-                
-                let attempts = 0;
-                while (attempts < 5) {
-                    if (window.completeAd()) {
-                        console.log('[AIP Bot] Completed existing ad');
-                        break;
-                    }
-                    attempts++;
-                    await new Promise(r => setTimeout(r, 100));
-                }
-                
-                setTimeout(() => { isProcessing = false; }, 1000);
-                return;
-            }
-            
-            // No ad playing - try to trigger one
-            console.log('[AIP Bot] No ad detected, trying to trigger...');
-            
-            // Method 1: Press U multiple times with delays
-            pressU();
-            await new Promise(r => setTimeout(r, 200));
-            pressU();
-            await new Promise(r => setTimeout(r, 200));
-            pressU();
-            
-            // Method 2: Try direct trigger
-            await new Promise(r => setTimeout(r, 300));
-            triggerAd();
-            
-            // Wait and check if ad started
-            await new Promise(r => setTimeout(r, 500));
-            const adNow = document.querySelector('iframe[src*="googleads"], iframe[src*="ad"], video, [id*="aip"], [class*="ad"]');
-            
-            if (adNow) {
-                console.log('[AIP Bot] Ad started! Completing...');
-                isProcessing = true;
-                
-                let attempts = 0;
-                while (attempts < 10) {
-                    if (window.completeAd()) {
-                        console.log('[AIP Bot] SUCCESS - Ad completed');
-                        break;
-                    }
-                    attempts++;
-                    await new Promise(r => setTimeout(r, 100));
-                }
-                
-                setTimeout(() => { isProcessing = false; }, 1000);
-            } else {
-                console.log('[AIP Bot] Ad did not start');
-            }
-            
-        }, 2000); // Check every 2 seconds
-    }
-    
-    // Anti-afk
-    function antiAfk() {
+        // Anti-afk W every 1.5s
         if (Date.now() - lastMove > 1500) {
             const w = new KeyboardEvent('keydown', {
                 key: 'w',
@@ -360,17 +213,12 @@ module.exports = async function main(deps) {
             }, 50);
             lastMove = Date.now();
         }
-        requestAnimationFrame(antiAfk);
+        
+        requestAnimationFrame(fastLoop);
     }
     
-    // Start
-    console.log('[AIP Bot] v3 active - U press fixed');
-    startAdWatch();
-    requestAnimationFrame(antiAfk);
-    
-    // Expose manual trigger
-    window.triggerAd = triggerAd;
-    window.pressU = pressU;
+    console.log('[AIP Bot] Spam mode active - U every 100ms, complete every frame');
+    requestAnimationFrame(fastLoop);
 })();
 `;
 

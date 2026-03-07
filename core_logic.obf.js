@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.5.5";
+    const VERSION = "3.4.99";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -74,26 +74,24 @@ module.exports = async function main(deps) {
 
             if (isAutoAd) {
                 await page.evaluateOnNewDocument(() => {
-                    // INTEGRATED AIP INSTANT COMPLETE LOGIC
                     (function() {
-                        let autoModeActive = true; // Set to true by default for bots
+                        let autoModeActive = true;
                         let isProcessing = false;
                         let lastMove = 0;
+                        const processedTokens = new Set();
 
-                        function deepSearch(obj, depth, maxDepth = 3, visited = new Set()) {
+                        function deepSearch(obj, depth = 0, maxDepth = 4, visited = new Set()) {
                             if (depth > maxDepth || !obj || visited.has(obj)) return null;
                             visited.add(obj);
                             try {
                                 for (let key in obj) {
-                                    try {
-                                        const val = obj[key];
-                                        if (!val) continue;
-                                        if (typeof val === 'object') {
-                                            if (val.token && (val.prerollEventHandler || val.onAdComplete || val.complete)) return val;
-                                            const found = deepSearch(val, depth + 1, maxDepth, visited);
-                                            if (found) return found;
-                                        }
-                                    } catch(e) {}
+                                    const val = obj[key];
+                                    if (!val || typeof val !== 'object') continue;
+                                    if (val.token || val.adToken || val._token) {
+                                        if (val.prerollEventHandler || val.onAdComplete || val.complete) return val;
+                                    }
+                                    const found = deepSearch(val, depth + 1, maxDepth, visited);
+                                    if (found) return found;
                                 }
                             } catch(e) {}
                             return null;
@@ -108,11 +106,8 @@ module.exports = async function main(deps) {
                                 () => window.aiptag?.adplayer,
                                 () => window.aipPlayer,
                                 () => {
-                                    const elements = document.querySelectorAll('*');
-                                    for (let el of elements) {
-                                        if (el.__vue__?.adComponent) return el.__vue__.adComponent;
-                                    }
-                                    return null;
+                                    const el = document.querySelector('*');
+                                    return el?.__vue__?.adComponent || el?.__vueParentComponent?.adComponent;
                                 }
                             ];
                             for (let getter of locations) {
@@ -121,40 +116,43 @@ module.exports = async function main(deps) {
                                     if (res && (res.token || res.adToken || res.prerollEventHandler)) return res;
                                 } catch(e) {}
                             }
-                            return deepSearch(window, 0);
+                            return deepSearch(window);
                         }
 
                         function getClientId() {
-                            try { return window.taro?.network?._socket?.id || window.taro?.network?.socket?.id || 'bot-client'; } catch(e) { return 'bot-client'; }
+                            try { return window.taro?.network?._socket?.id || window.taro?.network?.socket?.id || 'client-' + Math.random().toString(36).substr(2, 5); } catch(e) { return 'unknown'; }
                         }
 
                         function getNetworkSend() {
-                            try { return window.taro?.network?.send || window.taro?.network?.socket?.emit || window.game?.network?.send; } catch(e) { return null; }
+                            try { return window.taro?.network?.send || window.game?.network?.send || window.network?.send; } catch(e) { return null; }
                         }
 
                         window.completeAd = function() {
                             const comp = findAdComponent();
-                            const clientId = getClientId();
-                            const networkSend = getNetworkSend();
+                            const cid = getClientId();
+                            const net = getNetworkSend();
                             if (!comp) return false;
 
                             const token = comp.token || comp.adToken || comp._token || comp.currentToken;
-                            
+                            if (token && processedTokens.has(token)) return true;
+                            if (token) processedTokens.add(token);
+
                             try {
-                                if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", clientId);
-                                if (comp.onAdComplete) comp.onAdComplete({ token, clientId, status: 'completed' });
+                                if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", cid);
+                                if (comp.onAdComplete) comp.onAdComplete({ token, clientId: cid, status: 'completed' });
                                 if (typeof comp.complete === 'function') comp.complete();
                                 
-                                ['finish', 'close', 'skip'].forEach(m => { if (typeof comp[m] === 'function') comp[m](); });
-
-                                if (networkSend) {
-                                    networkSend('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId });
-                                    networkSend('adCompleted', { token, clientId, reward: true });
+                                if (net) {
+                                    net('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
+                                    net('adCompleted', { token, clientId: cid, reward: true });
                                 }
                                 
-                                ['video-ad-completed', 'adCompleted', 'aipAdComplete'].forEach(eventName => {
-                                    window.dispatchEvent(new CustomEvent(eventName, { detail: { token, clientId } }));
+                                ['video-ad-completed', 'adCompleted', 'aipAdComplete'].forEach(ev => {
+                                    window.dispatchEvent(new CustomEvent(ev, { detail: { token, clientId: cid } }));
                                 });
+                                
+                                // Clean up the component to prevent infinite loop
+                                if (comp.token) comp.token = null;
                             } catch(e) {}
                             return true;
                         };
@@ -165,41 +163,34 @@ module.exports = async function main(deps) {
                             document.dispatchEvent(new KeyboardEvent('keyup', opts));
                         }
 
-                        function triggerMove() {
-                            const opts = { key: 'w', code: 'KeyW', keyCode: 87, which: 87, bubbles: true };
-                            document.dispatchEvent(new KeyboardEvent('keydown', opts));
-                            setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', opts)), 50);
-                        }
-
                         function mainLoop() {
-                            const now = Date.now();
-                            
                             if (autoModeActive && !isProcessing) {
-                                const hasAd = document.querySelector('iframe, video, [class*="ad"], canvas');
+                                // Detection: Look for specific ad frames or the AIP player
+                                const hasAd = document.querySelector('iframe[src*="googleads"], video, [id*="aip-player-container"]');
+                                
                                 if (hasAd) {
                                     isProcessing = true;
                                     pressU();
-                                    window.completeAd();
-                                    setTimeout(() => { isProcessing = false; }, 5); // 5ms delay as requested
+                                    
+                                    // Give the game 800ms to actually start the ad logic before we kill it
+                                    setTimeout(() => {
+                                        window.completeAd();
+                                        // Wait a bit before allowing the next "U" press
+                                        setTimeout(() => { isProcessing = false; }, 2000);
+                                    }, 800);
                                 }
                             }
 
-                            if (now - lastMove > 1500) {
-                                triggerMove();
-                                lastMove = now;
+                            if (Date.now() - lastMove > 1500) {
+                                const w = { key: 'w', code: 'KeyW', keyCode: 87, which: 87, bubbles: true };
+                                document.dispatchEvent(new KeyboardEvent('keydown', w));
+                                setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', w)), 50);
+                                lastMove = Date.now();
                             }
 
                             requestAnimationFrame(mainLoop);
                         }
                         requestAnimationFrame(mainLoop);
-
-                        // Also allow K toggle manually if user ever views the bot
-                        window.addEventListener('keydown', (e) => {
-                            if (e.key.toLowerCase() === 'k' && !e.repeat) {
-                                autoModeActive = !autoModeActive;
-                                console.log("AUTO:", autoModeActive);
-                            }
-                        });
                     })();
                 });
             }
@@ -207,21 +198,21 @@ module.exports = async function main(deps) {
             try {
                 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
             } catch (e) {
-                log(`Bot ${id} joined (navigation timeout ignored)`);
+                log(`Bot ${id} Notice: Navigation timeout, proceeding.`);
             }
 
-            // Continuous UI interaction
+            // Persistence loop for UI buttons
             setInterval(async () => {
                 try {
                     await page.evaluate(() => {
-                        const targets = ['play', 'join', 'continue', 'confirm'];
+                        const targets = ['play', 'join', 'continue', 'confirm', 'respawn'];
                         const btns = Array.from(document.querySelectorAll('button, div, span'));
                         const match = btns.find(b => targets.includes(b.innerText.toLowerCase().trim()));
                         if (match) match.click();
                         document.querySelector('canvas')?.click();
                     });
                 } catch(e) {}
-            }, 5000);
+            }, 4000);
 
         } catch (e) { log(`Bot ${id} Error: ${e.message}`); }
     }
@@ -240,7 +231,7 @@ module.exports = async function main(deps) {
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-        await sendToWebhook(`🚀 Executor v${VERSION} Started (Deep Search + Instant Complete)`);
+        await sendToWebhook(`🚀 Executor v${VERSION} Active (Delayed Completion Mode)`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const question = (q) => new Promise(res => rl.question(q, res));
@@ -258,7 +249,7 @@ module.exports = async function main(deps) {
         for (let i = 0; i < count; i++) {
             let pPort = (mode === 3 && i >= 5) ? childProcesses.tor[(i - 5) % childProcesses.tor.length].port : null;
             runBot(i, url, pPort, mode === 3);
-            await new Promise(r => setTimeout(r, 4000));
+            await new Promise(r => setTimeout(r, 5000));
         }
 
         while (!shuttingDown) {
@@ -271,7 +262,7 @@ module.exports = async function main(deps) {
                     const idx = startIdx + i;
                     let pPort = (mode === 3 && idx >= 5) ? childProcesses.tor[(idx - 5) % childProcesses.tor.length].port : null;
                     runBot(idx, url, pPort, mode === 3);
-                    await new Promise(r => setTimeout(r, 4000));
+                    await new Promise(r => setTimeout(r, 5000));
                 }
             }
         }

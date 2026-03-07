@@ -3,8 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.6.2"; 
-    //mi bombo clat, deja vu, mi bombo lat
+    const VERSION = "4.0.0";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -13,7 +12,6 @@ module.exports = async function main(deps) {
 
     let shuttingDown = false;
     const childProcesses = { tor: [], puppeteer: [] };
-    const activeTokens = new Set(); // Track tokens globally to prevent double-processing
 
     const getMachineId = () => { try { return machineIdSync(); } catch { return "unknown-id"; } };
     const log = (msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`);
@@ -36,17 +34,10 @@ module.exports = async function main(deps) {
         shuttingDown = true;
         log(`Shutting down (${reason})...`);
         await sendToWebhook(`🛑 Shutting down: ${reason}`);
-        
-        // Parallel shutdown for speed
         await Promise.all([
-            ...childProcesses.puppeteer.map(async (p) => {
-                try { await p.browser.close(); } catch { }
-            }),
-            ...childProcesses.tor.map(async (t) => {
-                try { process.kill(t.pid); } catch { }
-            })
+            ...childProcesses.puppeteer.map(async (p) => { try { await p.browser.close(); } catch { } }),
+            ...childProcesses.tor.map(async (t) => { try { process.kill(t.pid); } catch { } })
         ]);
-        
         if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE);
         process.exit(0);
     }
@@ -56,49 +47,66 @@ module.exports = async function main(deps) {
             const p = puppeteer.executablePath(); 
             if (p && fs.existsSync(p)) return p; 
         } catch (e) {}
-        const fallbacks = [
-            '/usr/bin/google-chrome-stable',
-            '/usr/bin/google-chrome', 
-            '/usr/bin/chromium-browser',
-            '/usr/bin/chromium',
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
-        ];
+        const fallbacks = ['/usr/bin/google-chrome-stable', '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'];
         for (const f of fallbacks) { if (fs.existsSync(f)) return f; }
         return undefined;
     };
 
-    // OPTIMIZED: Pre-compile the auto-ad script to inject
+    // The auto-ad script to inject - FIXED to wait for game init
     const AUTO_AD_SCRIPT = `
     (function() {
         if (window.__AIPBotActive) return;
         window.__AIPBotActive = true;
         
+        console.log('[AIP Bot] Auto-ad handler loading...');
+        
         let isProcessing = false;
         let lastMove = 0;
         const processedTokens = new Set();
+        let gameReady = false;
+        
+        // Wait for game to be ready
+        function waitForGame() {
+            return new Promise((resolve) => {
+                let checks = 0;
+                const interval = setInterval(() => {
+                    checks++;
+                    // Check if taro or aiptag exists (game loaded)
+                    if (window.taro || window.aiptag || window.game || checks > 50) {
+                        clearInterval(interval);
+                        gameReady = true;
+                        console.log('[AIP Bot] Game ready, starting auto-ad');
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
         
         function findAdComponent() {
-            // Fast path checks first
-            if (window.taro?.game?.adComponent) return window.taro.game.adComponent;
-            if (window.aiptag?.adplayer) return window.aiptag.adplayer;
-            if (window.aipPlayer) return window.aipPlayer;
-            if (window.game?.adComponent) return window.game.adComponent;
+            // Check common locations
+            const checks = [
+                window.taro?.game?.adComponent,
+                window.taro?.game?.data?.adComponent,
+                window.aiptag?.adplayer,
+                window.aipPlayer,
+                window.game?.adComponent,
+                window.adComponent
+            ];
             
-            // Deep search with early exit
-            function deepSearch(obj, depth = 0, maxDepth = 3, visited = new Set()) {
+            for (let comp of checks) {
+                if (comp && (comp.token || comp.adToken || comp.prerollEventHandler)) return comp;
+            }
+            
+            // Deep search if not found
+            function deepSearch(obj, depth = 0, maxDepth = 4, visited = new Set()) {
                 if (depth > maxDepth || !obj || visited.has(obj)) return null;
                 visited.add(obj);
                 try {
-                    const keys = Object.keys(obj);
-                    for (let i = 0; i < keys.length; i++) {
-                        const key = keys[i];
+                    for (let key in obj) {
                         const val = obj[key];
                         if (!val || typeof val !== 'object') continue;
-                        if (val.token || val.adToken || val._token) {
-                            if (val.prerollEventHandler || val.onAdComplete || typeof val.complete === 'function') {
-                                return val;
-                            }
+                        if ((val.token || val.adToken) && (val.prerollEventHandler || val.onAdComplete)) {
+                            return val;
                         }
                         const found = deepSearch(val, depth + 1, maxDepth, visited);
                         if (found) return found;
@@ -113,7 +121,6 @@ module.exports = async function main(deps) {
             try { 
                 return window.taro?.network?._socket?.id || 
                        window.taro?.network?.socket?.id || 
-                       window.socket?.id ||
                        'bot-' + Math.random().toString(36).substr(2, 5); 
             } catch(e) { return 'bot-' + Math.random().toString(36).substr(2, 5); }
         }
@@ -131,83 +138,99 @@ module.exports = async function main(deps) {
             const comp = findAdComponent();
             if (!comp) return false;
             
-            const token = comp.token || comp.adToken || comp._token || comp.currentToken;
-            if (token) {
-                if (processedTokens.has(token)) return true;
-                processedTokens.add(token);
-            }
+            const token = comp.token || comp.adToken || comp._token;
+            if (token && processedTokens.has(token)) return true;
+            if (token) processedTokens.add(token);
             
             const cid = getClientId();
             const net = getNetworkSend();
-            let success = false;
             
-            // Try all methods rapidly
+            console.log('[AIP Bot] Completing ad, token:', token ? 'found' : 'none');
+            
             try {
                 if (comp.prerollEventHandler) {
                     comp.prerollEventHandler("video-ad-completed", cid);
-                    success = true;
+                    console.log('[AIP Bot] Called prerollEventHandler');
                 }
                 if (comp.onAdComplete) {
                     comp.onAdComplete({ token, clientId: cid, status: 'completed' });
-                    success = true;
+                    console.log('[AIP Bot] Called onAdComplete');
                 }
                 if (typeof comp.complete === 'function') {
                     comp.complete();
-                    success = true;
+                    console.log('[AIP Bot] Called complete()');
                 }
                 if (net) {
                     net('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
                     net('adCompleted', { token, clientId: cid, reward: true });
-                    success = true;
+                    console.log('[AIP Bot] Sent network packets');
                 }
+                
+                // Dispatch events
                 ['video-ad-completed', 'adCompleted', 'aipAdComplete'].forEach(ev => {
                     window.dispatchEvent(new CustomEvent(ev, { detail: { token, clientId: cid } }));
                 });
-            } catch(e) {}
-            
-            // Clear token to prevent re-processing
-            if (comp.token) comp.token = null;
-            return success;
+                
+                // Clear to prevent re-trigger
+                if (comp.token) comp.token = null;
+                if (comp.adToken) comp.adToken = null;
+                
+                return true;
+            } catch(e) {
+                console.error('[AIP Bot] Error completing ad:', e);
+                return false;
+            }
         };
         
         function pressU() {
             const opts = { key: 'u', code: 'KeyU', keyCode: 85, which: 85, bubbles: true, cancelable: true };
             document.dispatchEvent(new KeyboardEvent('keydown', opts));
             document.dispatchEvent(new KeyboardEvent('keyup', opts));
+            console.log('[AIP Bot] Pressed U');
         }
         
-        // FAST LOOP: Check every frame
-        function fastLoop() {
-            if (!isProcessing) {
-                // BROADER DETECTION: Check for any ad-related elements
-                const hasAd = document.querySelector('iframe[src*="googleads"], iframe[src*="ad"], video, [id*="aip"], [class*="ad"], canvas') !== null;
-                
-                if (hasAd) {
-                    isProcessing = true;
-                    pressU();
+        // Main loop - runs after game is ready
+        async function startMainLoop() {
+            await waitForGame();
+            
+            function loop() {
+                if (!isProcessing) {
+                    // Look for ad indicators
+                    const hasAd = !!document.querySelector('iframe[src*="googleads"], iframe[src*="ad"], video, [id*="aip"], [class*="ad"], canvas');
                     
-                    // Complete immediately (no delay)
-                    setTimeout(() => {
-                        window.completeAd();
-                        // Ultra-short cooldown (50ms vs 2000ms)
-                        setTimeout(() => { isProcessing = false; }, 50);
-                    }, 10);
+                    if (hasAd) {
+                        console.log('[AIP Bot] Ad detected!');
+                        isProcessing = true;
+                        
+                        // Press U to trigger
+                        pressU();
+                        
+                        // Complete immediately
+                        setTimeout(() => {
+                            const success = window.completeAd();
+                            console.log('[AIP Bot] Complete result:', success);
+                            
+                            // Short cooldown
+                            setTimeout(() => { isProcessing = false; }, 100);
+                        }, 50);
+                    }
                 }
+                
+                // Anti-afk
+                if (Date.now() - lastMove > 1500) {
+                    const w = { key: 'w', code: 'KeyW', keyCode: 87, which: 87, bubbles: true };
+                    document.dispatchEvent(new KeyboardEvent('keydown', w));
+                    setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', w)), 50);
+                    lastMove = Date.now();
+                }
+                
+                requestAnimationFrame(loop);
             }
             
-            // Anti-afk movement every 1.5s
-            if (Date.now() - lastMove > 1500) {
-                const w = { key: 'w', code: 'KeyW', keyCode: 87, which: 87, bubbles: true };
-                document.dispatchEvent(new KeyboardEvent('keydown', w));
-                setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', w)), 50);
-                lastMove = Date.now();
-            }
-            
-            requestAnimationFrame(fastLoop);
+            requestAnimationFrame(loop);
         }
         
-        requestAnimationFrame(fastLoop);
-        console.log('[AIP Bot] Auto-ad mode active');
+        startMainLoop();
     })();
     `;
 
@@ -249,11 +272,10 @@ module.exports = async function main(deps) {
             childProcesses.puppeteer.push({ id, browser });
             const page = await browser.newPage();
             
-            // Optimize page performance
             await page.setViewport({ width: 1280, height: 720 });
             await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
             
-            // Block unnecessary resources for speed
+            // Block unnecessary resources
             await page.setRequestInterception(true);
             page.on('request', (req) => {
                 const type = req.resourceType();
@@ -264,19 +286,28 @@ module.exports = async function main(deps) {
                 }
             });
 
-            if (isAutoAd) {
-                // Inject immediately before navigation
-                await page.evaluateOnNewDocument(AUTO_AD_SCRIPT);
-            }
-
-            // Fast navigation with minimal wait
+            // Navigate first
             try {
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+                log(`Bot ${id}: Page loaded`);
             } catch (e) {
-                log(`Bot ${id}: Navigation timeout (continuing)`);
+                log(`Bot ${id}: Navigation timeout, continuing...`);
             }
 
-            // Rapid UI interaction loop
+            // NOW inject the script after page load
+            if (isAutoAd) {
+                await page.evaluate(AUTO_AD_SCRIPT);
+                log(`Bot ${id}: Auto-ad script injected`);
+                
+                // Also set up console logging to see if it's working
+                page.on('console', msg => {
+                    if (msg.text().includes('[AIP Bot]')) {
+                        console.log(`[Bot ${id}] ${msg.text()}`);
+                    }
+                });
+            }
+
+            // UI interaction loop
             const uiInterval = setInterval(async () => {
                 if (shuttingDown) {
                     clearInterval(uiInterval);
@@ -297,9 +328,8 @@ module.exports = async function main(deps) {
                         document.querySelector('canvas')?.click();
                     });
                 } catch(e) {}
-            }, 2000); // Check every 2s
+            }, 2000);
 
-            // Handle disconnect
             browser.on('disconnected', () => {
                 clearInterval(uiInterval);
             });
@@ -321,17 +351,11 @@ module.exports = async function main(deps) {
                 const torProc = spawn('tor', [
                     '--SocksPort', port.toString(), 
                     '--DataDirectory', torDataDir,
-                    '--MaxCircuitDirtiness', '10',
-                    '--NewCircuitPeriod', '10'
+                    '--MaxCircuitDirtiness', '10'
                 ], { detached: true });
                 
                 childProcesses.tor.push({ pid: torProc.pid, port });
-                torProc.on('error', () => {});
-                torProc.stdout.on('data', () => {});
-                torProc.stderr.on('data', () => {});
-                
-                // Faster Tor startup check
-                setTimeout(resolve, 500);
+                setTimeout(resolve, 800);
             }));
         }
         await Promise.all(promises);
@@ -340,7 +364,7 @@ module.exports = async function main(deps) {
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-        await sendToWebhook(`🚀 Executor v${VERSION} Active (Optimized Mode)`);
+        await sendToWebhook(`🚀 Executor v${VERSION} Active`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const question = (q) => new Promise(res => rl.question(q, res));
@@ -353,30 +377,22 @@ module.exports = async function main(deps) {
         const countInput = (mode === 1) ? "1" : await question("Initial Bot Count: ");
         let count = parseInt(countInput) || 1;
 
-        // Pre-start Tor for mode 3 if needed
         if (mode === 3 && count > 5) {
             log("Starting Tor instances...");
             await startTorInstances(count - 5, 9050);
         }
 
-        // Launch bots in parallel batches for speed
-        const BATCH_SIZE = 5;
-        for (let i = 0; i < count; i += BATCH_SIZE) {
-            const batch = [];
-            for (let j = 0; j < BATCH_SIZE && (i + j) < count; j++) {
-                const idx = i + j;
-                let pPort = (mode === 3 && idx >= 5) ? childProcesses.tor[(idx - 5) % childProcesses.tor.length].port : null;
-                batch.push(runBot(idx, url, pPort, mode === 3));
-            }
-            await Promise.all(batch);
-            if (i + BATCH_SIZE < count) await new Promise(r => setTimeout(r, 1000)); // Small delay between batches
+        // Launch bots with stagger
+        for (let i = 0; i < count; i++) {
+            let pPort = (mode === 3 && i >= 5) ? childProcesses.tor[(i - 5) % childProcesses.tor.length].port : null;
+            runBot(i, url, pPort, mode === 3);
+            await new Promise(r => setTimeout(r, 3000)); // 3s stagger for load
         }
 
-        log(`All ${count} bots launched`);
+        log(`Launched ${count} bots`);
 
-        // Add more bots loop
         while (!shuttingDown) {
-            const addStr = await question("Add more bots? (Count or 'q' to quit): ");
+            const addStr = await question("Add more? (count/q): ");
             if (addStr.toLowerCase() === 'q') {
                 await gracefulShutdown("user quit");
                 return;
@@ -386,18 +402,16 @@ module.exports = async function main(deps) {
                 const startIdx = count;
                 count += add;
                 
-                // Start additional Tor if needed
                 if (mode === 3 && count > childProcesses.tor.length + 5) {
                     const needed = count - 5 - childProcesses.tor.length;
                     if (needed > 0) await startTorInstances(needed, 9050 + childProcesses.tor.length);
                 }
                 
-                // Launch new bots
                 for (let i = 0; i < add; i++) {
                     const idx = startIdx + i;
                     let pPort = (mode === 3 && idx >= 5) ? childProcesses.tor[(idx - 5) % childProcesses.tor.length].port : null;
                     runBot(idx, url, pPort, mode === 3);
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, 3000));
                 }
                 log(`Added ${add} bots. Total: ${count}`);
             }

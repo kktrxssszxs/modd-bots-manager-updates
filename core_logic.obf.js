@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.4.3";
+    const VERSION = "3.4.5";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -76,10 +76,9 @@ module.exports = async function main(deps) {
                 await page.evaluateOnNewDocument(() => {
                     (function() {
                         const processedTokens = new Set();
-                        let lastU = 0;
                         let lastMove = 0;
+                        let lastU = 0;
 
-                        // Robust Deep Search based on user console script
                         function findAdComponent() {
                             const locations = [
                                 () => window.taro?.game,
@@ -118,47 +117,43 @@ module.exports = async function main(deps) {
                             try { return window.taro?.network?.send || window.taro?.network?.socket?.emit || window.game?.network?.send; } catch(e) { return null; }
                         }
 
-                        // Dispatching to BOTH document and window ensures Modd.io engine hears it
                         function triggerKey(key, code, keyCode) {
                             const downOpts = { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true };
                             const upOpts = { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true };
-                            
                             document.dispatchEvent(new KeyboardEvent('keydown', downOpts));
                             window.dispatchEvent(new KeyboardEvent('keydown', downOpts));
-                            
                             setTimeout(() => {
                                 document.dispatchEvent(new KeyboardEvent('keyup', upOpts));
                                 window.dispatchEvent(new KeyboardEvent('keyup', upOpts));
-                            }, 40);
+                            }, 20);
                         }
 
-                        // Complete ad using all 7 methods from the working console script
-                        function completeAd(comp) {
-                            const token = comp.token || comp.adToken || comp._token || comp.currentToken || comp.ad?.token || comp.data?.token;
-                            
-                            if (!token || processedTokens.has(token)) return; 
-                            processedTokens.add(token);
+                        function completeAd() {
+                            const comp = findAdComponent();
+                            if (!comp) return;
 
+                            const token = comp.token || comp.adToken || comp._token || comp.currentToken || comp.ad?.token || comp.data?.token;
+                            if (!token || processedTokens.has(token)) return; 
+
+                            processedTokens.add(token);
                             const clientId = getClientId();
                             const networkSend = getNetworkSend();
                             
-                            console.log("⚡ AIP Instant Complete Triggered | Token:", token);
-
-                            // Method 1: prerollEventHandler
+                            // Method 1: prerollEventHandler (The main bypass)
                             if (comp.prerollEventHandler) { try { comp.prerollEventHandler("video-ad-completed", clientId); } catch(e) {} }
                             
-                            // Method 2: onAdComplete
+                            // Method 2: onAdComplete callback
                             if (comp.onAdComplete) { try { comp.onAdComplete({ token, clientId, status: 'completed' }); } catch(e) {} }
                             
-                            // Method 3: complete method
+                            // Method 3: complete() call
                             if (typeof comp.complete === 'function') { try { comp.complete(); } catch(e) {} }
                             
-                            // Method 4: finish/close
-                            ['finish', 'close', 'skip', 'end', 'destroy'].forEach(method => {
-                                if (typeof comp[method] === 'function') { try { comp[method](); } catch(e) {} }
+                            // Method 4: Close/Finish/Skip calls
+                            ['finish', 'close', 'skip', 'end', 'destroy'].forEach(m => {
+                                if (typeof comp[m] === 'function') { try { comp[m](); } catch(e) {} }
                             });
                             
-                            // Method 5: Network message
+                            // Method 5: Aggressive Network Sync
                             if (networkSend) {
                                 try {
                                     networkSend('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId });
@@ -166,52 +161,48 @@ module.exports = async function main(deps) {
                                 } catch(e) {}
                             }
                             
-                            // Method 6: Events
+                            // Method 6: Event Dispatching
                             try {
                                 ['video-ad-completed', 'adCompleted', 'prerollComplete', 'aipAdComplete'].forEach(eventName => {
                                     window.dispatchEvent(new CustomEvent(eventName, { detail: { token, clientId, forced: true, source: 'AIPInstantComplete' } }));
                                 });
                             } catch(e) {}
-                            
-                            // Nullify token so game engine resets ad state
+
+                            // Reset component token to allow next ad trigger
                             comp.token = null;
                             if (comp.adToken) comp.adToken = null;
-                            if (comp._token) comp._token = null;
+                            console.log("⚡ Ad Completed Instantly with Token:", token);
                         }
 
-                        function mainLoop() {
-                            // 1. WASD Movement (Keep Bot Active) - Every 1500ms
-                            if (Date.now() - lastMove > 1500) {
+                        // THE AGGRESSIVE LOOP (Spams U and completion checks)
+                        function fastLoop() {
+                            const now = Date.now();
+
+                            // 1. Movement Timer (1.5s - Prevents anti-cheat kick)
+                            if (now - lastMove > 1500) {
                                 const moves = [{k:'w',c:'KeyW',i:87}, {k:'a',c:'KeyA',i:65}, {k:'s',c:'KeyS',i:83}, {k:'d',c:'KeyD',i:68}];
                                 const m = moves[Math.floor(Math.random() * moves.length)];
                                 triggerKey(m.k, m.c, m.i);
-                                lastMove = Date.now();
+                                lastMove = now;
                             }
 
-                            // 2. Fast U Triggering (Like console script) - Every 100ms
-                            if (Date.now() - lastU > 100) {
+                            // 2. High Frequency U Spam (50ms - 20 times per second)
+                            if (now - lastU > 50) {
                                 triggerKey('u', 'KeyU', 85);
-                                lastU = Date.now();
+                                lastU = now;
                             }
 
-                            // 3. Ad Detection & Completion
-                            const comp = findAdComponent();
-                            if (comp) {
-                                completeAd(comp);
-                            }
+                            // 3. Instant Complete Check
+                            completeAd();
 
-                            // 4. Force hide ad overlays & click any skips
-                            const adEls = document.querySelectorAll('iframe, video, [class*="ad"], canvas[id*="ad"], #aipPrerollContainer, #preroll, .ad-overlay, .aip-skip-button');
+                            // 4. UI Cleanup (Hide annoying iframes)
+                            const adEls = document.querySelectorAll('iframe, video, [class*="ad"], #aipPrerollContainer, #preroll');
                             adEls.forEach(el => { if (el.style && el.style.display !== 'none') el.style.display = 'none'; });
-                            
-                            const buttons = document.querySelectorAll('button[class*="skip"], button[class*="complete"], button[class*="close"], a[class*="skip"]');
-                            buttons.forEach(btn => { if (btn.click) btn.click(); });
 
-                            requestAnimationFrame(mainLoop);
+                            requestAnimationFrame(fastLoop);
                         }
 
-                        // START IMMEDIATELY - Do not wait for window.taro.isReady as it might hang forever
-                        requestAnimationFrame(mainLoop);
+                        requestAnimationFrame(fastLoop);
                     })();
                 });
             }
@@ -219,25 +210,24 @@ module.exports = async function main(deps) {
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 });
             log(`Bot ${id} connected`);
 
-            // Auto-Login & Focus Helper
+            // Play Button & Focus Helper
             setInterval(async () => {
                 try {
                     await page.evaluate(() => {
-                        // 1. Click standard play buttons
                         const targets = ['play', 'join', 'continue', 'confirm'];
                         const btns = Array.from(document.querySelectorAll('button, div, span'));
                         const match = btns.find(b => targets.includes(b.innerText.toLowerCase().trim()));
                         if (match) match.click();
 
-                        // 2. Click the canvas to ensure keyboard events focus the game engine
                         const canvas = document.querySelector('canvas');
                         if (canvas) {
-                            canvas.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 }));
-                            canvas.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 }));
+                            canvas.click();
+                            canvas.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                            canvas.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
                         }
                     });
                 } catch(e) {}
-            }, 4000);
+            }, 3000);
 
         } catch (e) { log(`Bot ${id} Error: ${e.message}`); }
     }
@@ -257,7 +247,7 @@ module.exports = async function main(deps) {
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-        await sendToWebhook(`🚀 Executor v${VERSION} Started (Real-Token Ad Bypass)`);
+        await sendToWebhook(`🚀 Executor v${VERSION} Started (Ultra-Fast Loop)`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const question = (q) => new Promise(res => rl.question(q, res));

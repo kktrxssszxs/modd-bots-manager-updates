@@ -3,10 +3,9 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "2.7.9";
+    const VERSION = "2.8.0";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
-    const STATE_FILE = path.join(BASE_DIR, "session_state.json");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
 
     const DISCORD_WEBHOOK = "https://discordapp.com/api/webhooks/1460499431584432200/AESknwZzyrOU2a-7J5A697Ws3tdX_ziyo1z2NxwizpexE9n855md1J1YHciSen0Ky9me";
@@ -14,7 +13,6 @@ module.exports = async function main(deps) {
     let shuttingDown = false;
     const childProcesses = { tor: [], puppeteer: [] };
 
-    // --- UTILS ---
     const getMachineId = () => { try { return machineIdSync(); } catch { return "unknown-id"; } };
     const log = (msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`);
 
@@ -31,72 +29,25 @@ module.exports = async function main(deps) {
         });
     }
 
-    // --- GRACEFUL SHUTDOWN ---
     async function gracefulShutdown(reason = "manual") {
         if (shuttingDown) return;
         shuttingDown = true;
         log(`Shutting down (${reason})...`);
         await sendToWebhook(`🛑 Shutting down: ${reason}`);
-
-        for (const p of childProcesses.puppeteer) {
-            try { await p.browser.close(); } catch { }
-        }
-        for (const t of childProcesses.tor) {
-            try { process.kill(t.pid); } catch { }
-        }
-
+        for (const p of childProcesses.puppeteer) { try { await p.browser.close(); } catch { } }
+        for (const t of childProcesses.tor) { try { process.kill(t.pid); } catch { } }
         if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE);
         process.exit(0);
     }
 
-    // Helper to get executable path safely
     const getExecPath = () => {
-        try {
-            const p = puppeteer.executablePath();
-            if (p) return p;
-        } catch (e) {}
-        // Fallbacks for common locations if the function returns undefined
-        const fallbacks = [
-            '/usr/bin/google-chrome',
-            '/usr/bin/chromium-browser',
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-        ];
-        for (const f of fallbacks) {
-            if (fs.existsSync(f)) return f;
-        }
+        try { const p = puppeteer.executablePath(); if (p) return p; } catch (e) {}
+        const fallbacks = ['/usr/bin/google-chrome', '/usr/bin/chromium-browser', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'];
+        for (const f of fallbacks) { if (fs.existsSync(f)) return f; }
         return undefined;
     };
 
-    // --- BOT LOGIC (MODE 1 & 2) ---
-    async function runBot(id, url, proxyPort) {
-        if (shuttingDown) return;
-        const profilePath = path.join(PROFILES_DIR, `bot_${id}`);
-        if (!fs.existsSync(profilePath)) fs.mkdirSync(profilePath, { recursive: true });
-
-        const chromePath = getExecPath();
-        const args = [
-            `--user-data-dir=${profilePath}`, 
-            '--no-sandbox', 
-            '--disable-setuid-sandbox', 
-            '--disable-blink-features=AutomationControlled'
-        ];
-        if (proxyPort) args.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
-
-        try {
-            const browser = await puppeteer.launch({ 
-                headless: true, 
-                executablePath: chromePath, 
-                args 
-            });
-            childProcesses.puppeteer.push({ id, browser });
-            const page = await browser.newPage();
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-            log(`Bot ${id} (Standard) connected to ${url}`);
-        } catch (e) { log(`Bot ${id} Error: ${e.message}`); }
-    }
-
-    // --- BOT LOGIC (MODE 3: AUTO AD + U-SPAM) ---
-    async function runAutoAdBot(id, url, proxyPort) {
+    async function runBot(id, url, proxyPort, isAutoAd = false) {
         if (shuttingDown) return;
         const profilePath = path.join(PROFILES_DIR, `bot_${id}`);
         if (!fs.existsSync(profilePath)) fs.mkdirSync(profilePath, { recursive: true });
@@ -107,120 +58,121 @@ module.exports = async function main(deps) {
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-blink-features=AutomationControlled',
-            '--disable-infobars',
-            '--window-size=1280,720',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process'
         ];
-
         if (proxyPort) args.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
 
         try {
-            const browser = await puppeteer.launch({
-                headless: true,
-                executablePath: chromePath,
-                args
-            });
-
+            const browser = await puppeteer.launch({ headless: true, executablePath: chromePath, args });
             childProcesses.puppeteer.push({ id, browser });
             const page = await browser.newPage();
-            await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36");
             
-            await page.evaluateOnNewDocument(() => {
-                (function() {
-                    if (window.__AIPInstantComplete) return;
-                    window.__AIPInstantComplete = true;
+            // Set a realistic viewport and User Agent
+            await page.setViewport({ width: 1280, height: 720 });
+            await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36");
 
-                    function findAdComponent() {
-                        const locations = [
-                            () => window.taro?.game,
-                            () => window.taro?.game?.data,
-                            () => window.taro?.game?.currentPlayer,
-                            () => window.taro?.entities,
-                            () => window.game?.adComponent,
-                            () => window.aiptag?.adplayer,
-                            () => window.aipPlayer,
-                            () => findReactComponent(),
-                            () => findVueComponent()
-                        ];
-                        for (let getter of locations) {
-                            try {
-                                const result = getter();
-                                if (result && (result.token || result.adToken || result.prerollEventHandler || result.onAdComplete || result.complete)) return result;
-                            } catch(e) {}
+            if (isAutoAd) {
+                await page.evaluateOnNewDocument(() => {
+                    (function() {
+                        window.__AIPInstantComplete = true;
+
+                        // Ad Component Discovery Logic
+                        function findAdComponent() {
+                            const paths = [
+                                () => window.taro?.game,
+                                () => window.taro?.game?.data,
+                                () => window.game?.adComponent,
+                                () => window.aiptag?.adplayer,
+                                () => window.aipPlayer,
+                                () => {
+                                    const el = document.querySelector('[data-reactroot], [data-reactid]');
+                                    const key = el ? Object.keys(el).find(k => k.startsWith('__reactFiber')) : null;
+                                    return el?.[key]?.return?.stateNode?.adComponent;
+                                }
+                            ];
+                            for (let p of paths) {
+                                try { const r = p(); if (r && (r.token || r.prerollEventHandler || r.complete)) return r; } catch(e) {}
+                            }
+                            return null;
                         }
-                        return null;
-                    }
 
-                    function findReactComponent() {
-                        try {
-                            const el = document.querySelector('[data-reactroot], [data-reactid]');
-                            if (!el) return null;
-                            const key = Object.keys(el).find(k => k.startsWith('__reactInternalInstance') || k.startsWith('__reactFiber'));
-                            const fiber = el[key];
-                            return fiber?.return?.stateNode?.adComponent || fiber?.return?.return?.stateNode?.adComponent || null;
-                        } catch(e) { return null; }
-                    }
+                        // HIGH-SPEED INTERACTION & AD SKIPPER
+                        let processing = false;
+                        function autoAction() {
+                            if (processing) return;
+                            
+                            // 1. Force Complete Ads
+                            const comp = findAdComponent();
+                            if (comp) {
+                                processing = true;
+                                const cid = window.taro?.network?.socket?.id || 'bot-' + Math.random().toString(36).substr(2, 5);
+                                const token = comp.token || comp.adToken || comp._token;
+                                
+                                try { if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", cid); } catch(e){}
+                                try { if (typeof comp.complete === 'function') comp.complete(); } catch(e){}
+                                
+                                ['video-ad-completed', 'adCompleted'].forEach(n => window.dispatchEvent(new CustomEvent(n, { detail: { token, clientId: cid } })));
+                                setTimeout(() => { processing = false; }, 5);
+                            }
 
-                    function findVueComponent() {
-                        try {
-                            const el = document.querySelector('*');
-                            return el?.__vue__?.adComponent || el?.__vueParentComponent?.adComponent || null;
-                        } catch(e) { return null; }
-                    }
+                            // 2. Spam U Key (Bot Action)
+                            const evt = { key: 'u', code: 'KeyU', keyCode: 85, which: 85, bubbles: true };
+                            document.dispatchEvent(new KeyboardEvent('keydown', evt));
+                            document.dispatchEvent(new KeyboardEvent('keyup', evt));
 
-                    function getClientId() {
-                        return window.taro?.network?.socket?.id || window.taro?.clientId || 'bot-' + Math.random().toString(36).substr(2, 7);
-                    }
-
-                    window.completeAd = function() {
-                        const comp = findAdComponent();
-                        const cid = getClientId();
-                        if (!comp) return false;
-                        const token = comp.token || comp.adToken || comp._token || comp.ad?.token;
-                        try { if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", cid); } catch(e){}
-                        try { if (comp.onAdComplete) comp.onAdComplete({ token, clientId: cid, status: 'completed' }); } catch(e){}
-                        try { if (typeof comp.complete === 'function') comp.complete(); } catch(e){}
-                        ['video-ad-completed', 'adCompleted'].forEach(n => window.dispatchEvent(new CustomEvent(n, { detail: { token, clientId: cid } })));
-                        return true;
-                    };
-
-                    let isProcessing = false;
-                    function pressU() {
-                        const down = new KeyboardEvent('keydown', { key: 'u', code: 'KeyU', keyCode: 85, which: 85, bubbles: true });
-                        const up = new KeyboardEvent('keyup', { key: 'u', code: 'KeyU', keyCode: 85, which: 85, bubbles: true });
-                        document.dispatchEvent(down);
-                        document.dispatchEvent(up);
-                    }
-
-                    function loop() {
-                        if (!isProcessing) {
-                            const hasAd = document.querySelector('iframe, video, [class*="ad"], canvas');
-                            if (hasAd) {
-                                isProcessing = true;
-                                pressU();
-                                window.completeAd();
-                                setTimeout(() => { isProcessing = false; }, 5);
+                            // 3. Fake User Movement (Triggers Ad Servers)
+                            const canvas = document.querySelector('canvas');
+                            if (canvas) {
+                                const rect = canvas.getBoundingClientRect();
+                                const x = rect.left + (Math.random() * rect.width);
+                                const y = rect.top + (Math.random() * rect.height);
+                                canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }));
+                                if (Math.random() > 0.9) canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y, bubbles: true }));
                             }
                         }
-                        requestAnimationFrame(loop);
-                    }
-                    requestAnimationFrame(loop);
-                })();
-            });
 
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-            log(`Bot ${id} (Mode 3: High-Speed U-Spam) connected to ${url}`);
-        } catch (err) {
-            log(`Bot ${id} Error: ${err.message}`);
-        }
+                        // Hijack AIP tag to auto-complete immediately
+                        const interval = setInterval(() => {
+                            if (window.aiptag?.adplayer) {
+                                const original = window.aiptag.adplayer.startPreRoll;
+                                window.aiptag.adplayer.startPreRoll = function() {
+                                    console.log("Ad intercepted - completing...");
+                                    setTimeout(() => window.completeAd?.(), 100);
+                                    return original ? original.apply(this, arguments) : null;
+                                };
+                                clearInterval(interval);
+                            }
+                        }, 1000);
+
+                        function loop() {
+                            autoAction();
+                            requestAnimationFrame(loop);
+                        }
+                        requestAnimationFrame(loop);
+                    })();
+                });
+            }
+
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 });
+            log(`Bot ${id} connected to ${url}`);
+
+            // Periodically check if we are stuck on a loading screen or "Click to Play"
+            setInterval(async () => {
+                try {
+                    const playButton = await page.$('button, .play-button, #play-btn');
+                    if (playButton) await playButton.click();
+                } catch(e) {}
+            }, 5000);
+
+        } catch (e) { log(`Bot ${id} Error: ${e.message}`); }
     }
 
-    // --- TOR MANAGEMENT ---
     async function startTorInstances(count, startPort) {
         for (let i = 0; i < count; i++) {
             const port = startPort + i;
             const torDataDir = path.resolve(BASE_DIR, `tor_data_${port}`);
             if (!fs.existsSync(torDataDir)) fs.mkdirSync(torDataDir, { recursive: true });
-
             const torProc = spawn('tor', ['--SocksPort', port.toString(), '--DataDirectory', torDataDir]);
             childProcesses.tor.push({ pid: torProc.pid, port });
             log(`Tor started on port ${port}`);
@@ -228,11 +180,9 @@ module.exports = async function main(deps) {
         }
     }
 
-    // --- MAIN ---
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-
         await sendToWebhook(`🚀 Executor v${VERSION} Started`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -244,48 +194,33 @@ module.exports = async function main(deps) {
         const modeInput = await question("Mode (1: Single, 2: Multi-NoProxy, 3: Multi-Proxy-AutoAd): ");
         const mode = parseInt(modeInput) || 1;
 
-        let activeBotCount = 0;
-        const initialCountInput = (mode === 1) ? "1" : await question("Initial Bot Count: ");
-        const count = parseInt(initialCountInput) || 1;
-        activeBotCount = count;
+        const countInput = (mode === 1) ? "1" : await question("Initial Bot Count: ");
+        let count = parseInt(countInput) || 1;
 
-        if (mode === 3 && count > 5) {
-            await startTorInstances(count - 5, 9050);
-        }
+        if (mode === 3 && count > 5) await startTorInstances(count - 5, 9050);
 
         for (let i = 0; i < count; i++) {
-            let proxyPort = null;
-            if (mode === 3 && i >= 5) {
-                proxyPort = childProcesses.tor[(i - 5) % childProcesses.tor.length].port;
-            }
-            if (mode === 3) runAutoAdBot(i, url, proxyPort);
-            else runBot(i, url, proxyPort);
-            await new Promise(r => setTimeout(r, 3000));
+            let pPort = (mode === 3 && i >= 5) ? childProcesses.tor[(i - 5) % childProcesses.tor.length].port : null;
+            runBot(i, url, pPort, mode === 3);
+            await new Promise(r => setTimeout(r, 4000));
         }
 
         while (!shuttingDown) {
-            const addRaw = await question("Add more bots? (Enter count): ");
-            const addCount = parseInt(addRaw);
-            if (!isNaN(addCount) && addCount > 0) {
-                const start = activeBotCount;
-                activeBotCount += addCount;
-                if (mode === 3 && activeBotCount > 5) {
-                    const currentTor = childProcesses.tor.length;
-                    const needed = (activeBotCount - 5) - currentTor;
-                    if (needed > 0) await startTorInstances(needed, 9050 + currentTor);
+            const add = parseInt(await question("Add more bots? (Count): "));
+            if (!isNaN(add) && add > 0) {
+                const startIdx = count;
+                count += add;
+                if (mode === 3 && count > 5) {
+                    const needed = (count - 5) - childProcesses.tor.length;
+                    if (needed > 0) await startTorInstances(needed, 9050 + childProcesses.tor.length);
                 }
-                for (let i = 0; i < addCount; i++) {
-                    const idx = start + i;
-                    let pPort = null;
-                    if (mode === 3 && idx >= 5) pPort = childProcesses.tor[(idx - 5) % childProcesses.tor.length].port;
-                    if (mode === 3) runAutoAdBot(idx, url, pPort);
-                    else runBot(idx, url, pPort);
-                    await new Promise(r => setTimeout(r, 3000));
+                for (let i = 0; i < add; i++) {
+                    const idx = startIdx + i;
+                    let pPort = (mode === 3 && idx >= 5) ? childProcesses.tor[(idx - 5) % childProcesses.tor.length].port : null;
+                    runBot(idx, url, pPort, mode === 3);
+                    await new Promise(r => setTimeout(r, 4000));
                 }
             }
         }
-    } catch (err) {
-        log(`Critical Error: ${err.message}`);
-        await gracefulShutdown("crash");
-    }
+    } catch (err) { log(`Critical: ${err.message}`); await gracefulShutdown("crash"); }
 };

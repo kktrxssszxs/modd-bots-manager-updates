@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "4.0.6";
+    const VERSION = "4.0.8";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -52,268 +52,368 @@ module.exports = async function main(deps) {
         return undefined;
     };
 
-    // FIXED: Better ad script with retry logic and proper timing
+    // FIXED: Completely rewritten ad script based on working test code
     const AUTO_AD_SCRIPT = `
     (function() {
         if (window.__AIPBotActive) return;
         window.__AIPBotActive = true;
         
-        console.log('[AIP Bot] Starting...');
+        console.log('[AIP Bot] Starting v2...');
         
         let isProcessing = false;
         let lastMove = 0;
         const processedTokens = new Set();
         
-        // More thorough search with debugging
-        function findAdComponent(debug = false) {
-            // Direct checks first
-            const checks = [
-                { name: 'taro.game.adComponent', get: () => window.taro?.game?.adComponent },
-                { name: 'taro.game.data.adComponent', get: () => window.taro?.game?.data?.adComponent },
-                { name: 'taro.game.currentPlayer.adComponent', get: () => window.taro?.game?.currentPlayer?.adComponent },
-                { name: 'aiptag.adplayer', get: () => window.aiptag?.adplayer },
-                { name: 'aipPlayer', get: () => window.aipPlayer },
-                { name: 'game.adComponent', get: () => window.game?.adComponent },
-                { name: 'adComponent', get: () => window.adComponent }
+        // Exact copy from working test code
+        function findAdComponent() {
+            const locations = [
+                () => window.taro?.game,
+                () => window.taro?.game?.data,
+                () => window.taro?.game?.currentPlayer,
+                () => window.taro?.entities,
+                () => window.game?.adComponent,
+                () => window.game?.adManager,
+                () => window.game?.ads,
+                () => window.adManager,
+                () => window.ads,
+                () => window.adComponent,
+                () => window.aiptag?.adplayer,
+                () => window.aiptag?.adplayer?.component,
+                () => window.aipPlayer,
+                () => window.aipAdComponent,
+                () => {
+                    const el = document.querySelector('*');
+                    return el?.__vue__?.adComponent || el?.__vueParentComponent?.adComponent;
+                },
+                () => window.__adCallbacks,
+                () => window.__aipCallbacks,
+                () => window.__adComponent
             ];
             
-            for (let check of checks) {
+            for (let getter of locations) {
                 try {
-                    const result = check.get();
-                    if (result && (result.token || result.adToken || result._token || result.prerollEventHandler)) {
-                        if (debug) console.log('[AIP Bot] Found in:', check.name);
+                    const result = getter();
+                    if (result && (result.token || result.adToken || result._token || 
+                        result.prerollEventHandler || result.onAdComplete || result.complete)) {
+                        console.log('[AIP Bot] Found ad component via:', getter.toString().slice(0, 50));
                         return result;
                     }
                 } catch(e) {}
             }
             
-            // Deep search
-            function deepSearch(obj, depth = 0, maxDepth = 5, visited = new Set()) {
-                if (depth > maxDepth || !obj || visited.has(obj)) return null;
-                visited.add(obj);
-                
-                try {
-                    const keys = Object.keys(obj);
-                    for (let key of keys) {
-                        try {
-                            const val = obj[key];
-                            if (!val || typeof val !== 'object') continue;
-                            
-                            // Check if it looks like an ad component
-                            const hasToken = val.token || val.adToken || val._token || val.currentToken;
-                            const hasHandler = val.prerollEventHandler || val.onAdComplete || typeof val.complete === 'function';
-                            
-                            if (hasToken && hasHandler) {
-                                if (debug) console.log('[AIP Bot] Deep search found at depth', depth, 'key:', key);
+            // Deep search as last resort
+            return deepSearch(window, 0);
+        }
+        
+        function deepSearch(obj, depth, maxDepth = 3, visited = new Set()) {
+            if (depth > maxDepth || !obj || visited.has(obj)) return null;
+            visited.add(obj);
+            
+            try {
+                for (let key in obj) {
+                    try {
+                        const val = obj[key];
+                        if (!val) continue;
+                        
+                        if (typeof val === 'object') {
+                            if (val.token && (val.prerollEventHandler || val.onAdComplete || val.complete)) {
+                                console.log('[AIP Bot] Deep search found at depth', depth, 'key:', key);
                                 return val;
                             }
-                            
-                            // Also check for aiptag patterns
-                            if (val.startPreRoll || val.showAd || val.playAd) {
-                                if (debug) console.log('[AIP Bot] Found ad player at depth', depth, 'key:', key);
-                                return val;
-                            }
-                            
                             const found = deepSearch(val, depth + 1, maxDepth, visited);
                             if (found) return found;
-                        } catch(e) {}
-                    }
-                } catch(e) {}
-                return null;
-            }
-            
-            const deep = deepSearch(window);
-            if (deep && debug) console.log('[AIP Bot] Found via deep search');
-            return deep;
+                        }
+                    } catch(e) {}
+                }
+            } catch(e) {}
+            return null;
         }
         
         function getClientId() {
-            try { 
-                return window.taro?.network?._socket?.id || 
-                       window.taro?.network?.socket?.id || 
-                       window.socket?.id ||
-                       'bot-' + Math.random().toString(36).substr(2, 5); 
-            } catch(e) { return 'bot-' + Math.random().toString(36).substr(2, 5); }
+            const locations = [
+                () => window.taro?.network?._socket?.id,
+                () => window.taro?.network?.socket?.id,
+                () => window.taro?.clientId,
+                () => window.game?.clientId,
+                () => window.clientId,
+                () => window.socket?.id,
+                () => window.network?.socket?.id
+            ];
+            
+            for (let getter of locations) {
+                try {
+                    const id = getter();
+                    if (id) return id;
+                } catch(e) {}
+            }
+            return 'bot-' + Math.random().toString(36).substr(2, 9);
         }
         
         function getNetworkSend() {
-            try { 
-                return window.taro?.network?.send || 
-                       window.taro?.network?.socket?.emit ||
-                       window.game?.network?.send || 
-                       window.socket?.emit; 
-            } catch(e) { return null; }
+            const locations = [
+                () => window.taro?.network?.send,
+                () => window.taro?.network?.socket?.emit,
+                () => window.game?.network?.send,
+                () => window.network?.send,
+                () => window.socket?.emit,
+                () => window.io?.emit
+            ];
+            
+            for (let getter of locations) {
+                try {
+                    const fn = getter();
+                    if (typeof fn === 'function') return fn;
+                } catch(e) {}
+            }
+            return null;
         }
         
-        // FIXED: Retry mechanism for completing ads
-        window.completeAd = async function(retries = 3) {
-            for (let i = 0; i < retries; i++) {
-                const comp = findAdComponent(true);
-                
-                if (!comp) {
-                    console.log('[AIP Bot] No ad component found, retry', i + 1);
-                    if (i < retries - 1) await new Promise(r => setTimeout(r, 100));
-                    continue;
-                }
-                
-                const token = comp.token || comp.adToken || comp._token || comp.currentToken;
-                if (token && processedTokens.has(token)) {
+        // FIXED: Complete ad function that actually works
+        window.completeAd = function(options = {}) {
+            console.log('[AIP Bot] Attempting complete...');
+            
+            const comp = findAdComponent();
+            const clientId = getClientId();
+            const networkSend = getNetworkSend();
+            
+            if (!comp) {
+                console.log('[AIP Bot] No ad component found');
+                return false;
+            }
+            
+            console.log('[AIP Bot] Component keys:', Object.keys(comp).join(', '));
+            
+            const token = comp.token || comp.adToken || comp._token || comp.currentToken || 
+                         comp.ad?.token || comp.data?.token || options.token;
+            
+            if (!token) {
+                console.log('[AIP Bot] Warning: No token found, trying without');
+            } else {
+                console.log('[AIP Bot] Token found:', token.toString().substring(0, 40));
+                if (processedTokens.has(token)) {
                     console.log('[AIP Bot] Token already processed');
                     return true;
                 }
-                if (token) processedTokens.add(token);
-                
-                const cid = getClientId();
-                const net = getNetworkSend();
-                
-                console.log('[AIP Bot] Completing ad, attempt', i + 1, 'token:', token ? 'yes' : 'no');
-                
-                let success = false;
-                
-                try {
-                    // Method 1: prerollEventHandler (most common)
-                    if (comp.prerollEventHandler) {
-                        comp.prerollEventHandler("video-ad-completed", cid);
-                        console.log('[AIP Bot] Called prerollEventHandler');
-                        success = true;
-                    }
-                    
-                    // Method 2: onAdComplete callback
-                    if (comp.onAdComplete) {
-                        comp.onAdComplete({ token, clientId: cid, status: 'completed', reward: true });
-                        console.log('[AIP Bot] Called onAdComplete');
-                        success = true;
-                    }
-                    
-                    // Method 3: complete function
-                    if (typeof comp.complete === 'function') {
-                        comp.complete();
-                        console.log('[AIP Bot] Called complete()');
-                        success = true;
-                    }
-                    
-                    // Method 4: close/skip/destroy
-                    ['close', 'skip', 'destroy', 'end', 'finish'].forEach(method => {
-                        if (typeof comp[method] === 'function') {
-                            try {
-                                comp[method]();
-                                console.log('[AIP Bot] Called', method);
-                                success = true;
-                            } catch(e) {}
-                        }
-                    });
-                    
-                    // Method 5: Network messages
-                    if (net) {
-                        try {
-                            net('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
-                            net('adCompleted', { token, clientId: cid, reward: true, status: 'completed' });
-                            net('prerollComplete', { token, clientId: cid });
-                            console.log('[AIP Bot] Sent network messages');
-                            success = true;
-                        } catch(e) {}
-                    }
-                    
-                    // Method 6: Dispatch events
-                    ['video-ad-completed', 'adCompleted', 'aipAdComplete', 'prerollComplete'].forEach(ev => {
-                        window.dispatchEvent(new CustomEvent(ev, { 
-                            detail: { token, clientId: cid, forced: true } 
-                        }));
-                    });
-                    
-                    // Clear tokens to prevent re-trigger
-                    if (comp.token) comp.token = null;
-                    if (comp.adToken) comp.adToken = null;
-                    if (comp._token) comp._token = null;
-                    
-                    if (success) {
-                        console.log('[AIP Bot] Ad completed successfully');
-                        return true;
-                    }
-                    
-                } catch(e) {
-                    console.error('[AIP Bot] Error:', e.message);
-                }
-                
-                if (success) return true;
+                processedTokens.add(token);
             }
             
-            console.log('[AIP Bot] Failed to complete after', retries, 'retries');
-            return false;
+            let success = false;
+            
+            // Method 1: prerollEventHandler
+            if (comp.prerollEventHandler) {
+                try {
+                    comp.prerollEventHandler("video-ad-completed", clientId);
+                    console.log('[AIP Bot] Called prerollEventHandler');
+                    success = true;
+                } catch(e) {
+                    console.log('[AIP Bot] prerollEventHandler failed:', e.message);
+                }
+            }
+            
+            // Method 2: onAdComplete
+            if (comp.onAdComplete) {
+                try {
+                    comp.onAdComplete({ token, clientId, status: 'completed' });
+                    console.log('[AIP Bot] Called onAdComplete');
+                    success = true;
+                } catch(e) {
+                    console.log('[AIP Bot] onAdComplete failed:', e.message);
+                }
+            }
+            
+            // Method 3: complete
+            if (typeof comp.complete === 'function') {
+                try {
+                    comp.complete();
+                    console.log('[AIP Bot] Called complete()');
+                    success = true;
+                } catch(e) {
+                    console.log('[AIP Bot] complete() failed:', e.message);
+                }
+            }
+            
+            // Method 4: finish/close/skip/end/destroy
+            ['finish', 'close', 'skip', 'end', 'destroy'].forEach(method => {
+                if (typeof comp[method] === 'function') {
+                    try {
+                        comp[method]();
+                        console.log('[AIP Bot] Called', method);
+                        success = true;
+                    } catch(e) {}
+                }
+            });
+            
+            // Method 5: Network
+            if (networkSend) {
+                try {
+                    const messages = [
+                        { type: 'playAdCallback', data: { status: 'completed', type: 'video-ad-completed', token, clientId } },
+                        { type: 'adCompleted', data: { token, clientId, reward: true } },
+                        { type: 'prerollComplete', data: { token, clientId } },
+                        { type: 'videoAdCompleted', data: { token, clientId, completed: true } }
+                    ];
+                    
+                    messages.forEach((msg, i) => {
+                        try {
+                            networkSend(msg.type, msg.data, clientId);
+                            console.log('[AIP Bot] Sent network msg:', msg.type);
+                            success = true;
+                        } catch(e) {}
+                    });
+                } catch(e) {}
+            }
+            
+            // Method 6: Events
+            try {
+                const events = [
+                    'video-ad-completed', 'adCompleted', 'prerollComplete', 
+                    'aipAdComplete', 'adFinished', 'rewardGranted'
+                ];
+                
+                events.forEach(eventName => {
+                    window.dispatchEvent(new CustomEvent(eventName, {
+                        detail: { token, clientId, forced: true, source: 'AIPBot' }
+                    }));
+                });
+                console.log('[AIP Bot] Dispatched events');
+            } catch(e) {}
+            
+            // Method 7: Click skip buttons
+            setTimeout(() => {
+                const buttons = document.querySelectorAll(
+                    'button[class*="skip"], button[class*="complete"], button[class*="close"], ' +
+                    'a[class*="skip"], div[class*="skip"], [id*="skip"], [id*="complete"]'
+                );
+                buttons.forEach(btn => {
+                    if (btn.offsetParent !== null && btn.click) {
+                        btn.click();
+                        console.log('[AIP Bot] Clicked button');
+                    }
+                });
+            }, 100);
+            
+            if (success) {
+                console.log('[AIP Bot] SUCCESS - Ad completion signals sent');
+            } else {
+                console.log('[AIP Bot] All methods failed');
+            }
+            
+            return success;
         };
         
         function pressU() {
-            const opts = { key: 'u', code: 'KeyU', keyCode: 85, which: 85, bubbles: true, cancelable: true };
-            document.dispatchEvent(new KeyboardEvent('keydown', opts));
-            document.dispatchEvent(new KeyboardEvent('keyup', opts));
+            const down = new KeyboardEvent('keydown', {
+                key: 'u',
+                code: 'KeyU',
+                keyCode: 85,
+                which: 85,
+                bubbles: true,
+                cancelable: true
+            });
+            const up = new KeyboardEvent('keyup', {
+                key: 'u',
+                code: 'KeyU',
+                keyCode: 85,
+                which: 85,
+                bubbles: true,
+                cancelable: true
+            });
+            document.dispatchEvent(down);
+            document.dispatchEvent(up);
+            console.log('[AIP Bot] Pressed U');
         }
         
-        // FIXED: Better detection - wait for both DOM AND game component
-        async function handleAd() {
-            if (isProcessing) return;
+        // FIXED: Better ad detection and handling
+        let adCheckInterval = null;
+        
+        function startAdWatch() {
+            if (adCheckInterval) return;
             
-            // Check for ad DOM elements
-            const adElements = document.querySelectorAll('iframe[src*="googleads"], iframe[src*="ad"], video, [id*="aip"], [class*="ad"], canvas');
-            const hasAdDOM = adElements.length > 0;
-            
-            if (!hasAdDOM) return;
-            
-            // Check if game component exists
-            const comp = findAdComponent();
-            
-            console.log('[AIP Bot] Ad DOM detected, component exists:', !!comp);
-            
-            if (!comp) {
-                // DOM exists but no component yet - press U and wait
-                console.log('[AIP Bot] Pressing U and waiting for component...');
-                pressU();
+            adCheckInterval = setInterval(async () => {
+                if (isProcessing) return;
                 
-                // Wait a bit for game to create component
-                await new Promise(r => setTimeout(r, 200));
+                // Check for ad DOM
+                const hasAd = document.querySelector('iframe[src*="googleads"], iframe[src*="ad"], video, [id*="aip"], [class*="ad"], canvas');
                 
-                // Try again
-                const comp2 = findAdComponent();
-                if (!comp2) {
-                    console.log('[AIP Bot] Still no component after U press');
-                    return;
+                if (hasAd) {
+                    console.log('[AIP Bot] Ad DOM detected');
+                    isProcessing = true;
+                    
+                    // Press U multiple times to trigger ad system
+                    pressU();
+                    await new Promise(r => setTimeout(r, 100));
+                    pressU();
+                    await new Promise(r => setTimeout(r, 100));
+                    
+                    // Wait for component to appear
+                    let attempts = 0;
+                    let success = false;
+                    
+                    while (attempts < 10 && !success) {
+                        await new Promise(r => setTimeout(r, 100));
+                        const result = window.completeAd();
+                        if (result) {
+                            success = true;
+                            console.log('[AIP Bot] Ad completed on attempt', attempts + 1);
+                        }
+                        attempts++;
+                    }
+                    
+                    if (!success) {
+                        console.log('[AIP Bot] Failed to complete after', attempts, 'attempts');
+                    }
+                    
+                    // Cooldown before next ad
+                    setTimeout(() => {
+                        isProcessing = false;
+                    }, 1000);
                 }
-            }
-            
-            isProcessing = true;
-            console.log('[AIP Bot] Processing ad...');
-            
-            // Press U to be sure
-            pressU();
-            
-            // Wait for component to be fully ready
-            await new Promise(r => setTimeout(r, 100));
-            
-            // Try to complete
-            const result = await window.completeAd(5); // 5 retries
-            console.log('[AIP Bot] Complete result:', result);
-            
-            // Cooldown
-            setTimeout(() => { isProcessing = false; }, 500);
+            }, 500); // Check every 500ms
         }
         
-        // Main loop
-        function loop() {
-            handleAd();
-            
-            // Anti-afk
+        // Anti-afk movement
+        function antiAfk() {
             if (Date.now() - lastMove > 1500) {
-                const w = { key: 'w', code: 'KeyW', keyCode: 87, which: 87, bubbles: true };
-                document.dispatchEvent(new KeyboardEvent('keydown', w));
-                setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', w)), 50);
+                const w = new KeyboardEvent('keydown', {
+                    key: 'w',
+                    code: 'KeyW',
+                    keyCode: 87,
+                    which: 87,
+                    bubbles: true
+                });
+                const wUp = new KeyboardEvent('keyup', {
+                    key: 'w',
+                    code: 'KeyW',
+                    keyCode: 87,
+                    which: 87,
+                    bubbles: true
+                });
+                document.dispatchEvent(w);
+                setTimeout(() => document.dispatchEvent(wUp), 50);
                 lastMove = Date.now();
             }
-            
-            requestAnimationFrame(loop);
+            requestAnimationFrame(antiAfk);
         }
         
-        // Start
-        console.log('[AIP Bot] Auto-ad handler active');
-        requestAnimationFrame(loop);
+        // Start both systems
+        console.log('[AIP Bot] Systems active');
+        startAdWatch();
+        requestAnimationFrame(antiAfk);
+        
+        // Also expose test function
+        window.testAdSystem = function() {
+            console.log('[AIP Bot] Testing...');
+            const comp = findAdComponent();
+            console.log('Component found:', !!comp);
+            if (comp) {
+                console.log('Keys:', Object.keys(comp));
+                console.log('Has token:', !!(comp.token || comp.adToken || comp._token));
+                console.log('Has prerollEventHandler:', typeof comp.prerollEventHandler === 'function');
+                console.log('Client ID:', getClientId());
+                console.log('Network send:', !!getNetworkSend());
+            }
+            return !!comp;
+        };
     })();
     `;
 
@@ -357,18 +457,8 @@ module.exports = async function main(deps) {
             
             await page.setViewport({ width: 1280, height: 720 });
             await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-            
-            // FIXED: Allow all resources through (don't block images/media)
-            // Remove the request interception entirely or just continue all
-            // If you want to keep it for debugging, do this:
-            /*
-            await page.setRequestInterception(true);
-            page.on('request', (req) => {
-                req.continue();
-            });
-            */
 
-            // Console logging for debugging
+            // Console logging
             page.on('console', msg => {
                 const text = msg.text();
                 if (text.includes('[AIP Bot]')) {
@@ -384,12 +474,19 @@ module.exports = async function main(deps) {
                 log(`Bot ${id}: Navigation timeout, continuing...`);
             }
 
-            // Inject script AFTER page load
+            // Inject script
             if (isAutoAd) {
                 await page.evaluate(AUTO_AD_SCRIPT);
-                log(`Bot ${id}: Auto-ad script injected (Mode 3 Active)`);
-            } else {
-                log(`Bot ${id}: Running without auto-ad (Mode 1/2)`);
+                log(`Bot ${id}: Auto-ad script injected (Mode 3)`);
+                
+                // Test the system after a delay
+                setTimeout(async () => {
+                    try {
+                        await page.evaluate(() => {
+                            if (window.testAdSystem) window.testAdSystem();
+                        });
+                    } catch(e) {}
+                }, 5000);
             }
 
             // UI interaction loop
@@ -460,7 +557,6 @@ module.exports = async function main(deps) {
         const modeInput = await question("Mode (1: Single, 2: Multi-NoProxy, 3: Multi-Proxy-AutoAd): ");
         const mode = parseInt(modeInput) || 1;
         
-        // DEBUG: Log the selected mode
         log(`Selected mode: ${mode} (isAutoAd: ${mode === 3})`);
         
         const countInput = (mode === 1) ? "1" : await question("Initial Bot Count: ");

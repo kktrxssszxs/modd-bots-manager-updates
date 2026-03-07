@@ -4,7 +4,7 @@ module.exports = async function main(deps) {
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
     const VERSION = "4.0.3";
-    // mib ombosmafjasjafgoiphjodghidrfgdrghighsdfsfiobhiodnjiobnjerwio1241122365 1512
+    //mi bosmbo scalllltt I need placeholders myh vombo passat 2.8l v6 making 96hp what an absolute machine
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");

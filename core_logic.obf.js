@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.2.0";
+    const VERSION = "3.4.0";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -75,125 +75,118 @@ module.exports = async function main(deps) {
             if (isAutoAd) {
                 await page.evaluateOnNewDocument(() => {
                     (function() {
-                        // 1. IMPROVED COMPONENT SEARCH
+                        const processedTokens = new Set();
+                        let lastU = 0;
+                        let lastMove = 0;
+
+                        // Deep search to find where Taro stores the REAL server-generated token
                         function findAdComponent() {
-                            const locations = [
-                                () => window.taro?.game?.adComponent,
+                            const targets = [
                                 () => window.taro?.game,
-                                () => window.game?.adComponent,
-                                () => window.aiptag?.adplayer,
-                                () => {
-                                    const el = document.querySelector('[data-reactroot], [data-reactid]');
-                                    const key = el ? Object.keys(el).find(k => k.startsWith('__reactFiber')) : null;
-                                    return el?.[key]?.return?.stateNode?.adComponent;
-                                }
+                                () => window.taro?.game?.data,
+                                () => window.taro?.game?.adComponent,
+                                () => window.game?.adComponent
                             ];
-                            for (let getter of locations) {
+                            for (let t of targets) {
                                 try {
-                                    const res = getter();
-                                    if (res && (res.prerollEventHandler || res.complete || res.onAdComplete)) return res;
-                                } catch(e) {}
+                                    let c = t();
+                                    if (c && (c.prerollEventHandler || c.onAdComplete || c.token || c.adToken)) return c;
+                                } catch(e){}
                             }
                             return null;
                         }
 
-                        // 2. INSTANT COMPLETE
-                        window.completeAd = function() {
-                            const comp = findAdComponent();
-                            const cid = window.taro?.network?.socket?.id || window.taro?.network?._socket?.id;
-                            if (!comp || !cid) return false;
-
-                            const token = comp.token || comp.adToken || "bypass-token";
-                            
-                            try {
-                                // Force callback to engine
-                                if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", cid);
-                                if (comp.onAdComplete) comp.onAdComplete({ token, clientId: cid, status: 'completed' });
-                                if (typeof comp.complete === 'function') comp.complete();
-                                
-                                // Direct socket notification
-                                if (window.taro?.network?.send) {
-                                    window.taro.network.send('adComplete', { token, clientId: cid });
-                                    window.taro.network.send('playAdCallback', { status: 'completed', type: 'video-ad-completed' });
-                                }
-                            } catch(e){}
-                            return true;
-                        };
-
-                        // 3. HIGH SPEED LOOP (Optimized for reliability)
-                        let lastU = 0;
-                        let lastMove = 0;
-                        const moveKeys = [{k:'w',c:'KeyW',i:87},{k:'a',c:'KeyA',i:65},{k:'s',c:'KeyS',i:83},{k:'d',c:'KeyD',i:68}];
-
-                        function press(k, c, i) {
-                            const p = { key:k, code:c, keyCode:i, which:i, bubbles:true, view:window };
-                            document.dispatchEvent(new KeyboardEvent('keydown', p));
-                            setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', p)), 50);
+                        function triggerKey(code, key, keyCode) {
+                            document.dispatchEvent(new KeyboardEvent('keydown', { key, code, keyCode, which: keyCode, bubbles: true }));
+                            setTimeout(() => {
+                                document.dispatchEvent(new KeyboardEvent('keyup', { key, code, keyCode, which: keyCode, bubbles: true }));
+                            }, 30);
                         }
 
                         function mainLoop() {
-                            // U Spam - Every 200ms (Fast but doesn't crash the engine)
-                            if (Date.now() - lastU > 200) {
-                                press('u', 'KeyU', 85);
-                                lastU = Date.now();
-                            }
-
-                            // Instant Complete - 60fps check
-                            window.completeAd();
-
-                            // WASD Movement - Every 1.5s
+                            // 1. Random WASD Movement (Keeps bot active)
                             if (Date.now() - lastMove > 1500) {
-                                const m = moveKeys[Math.floor(Math.random() * moveKeys.length)];
-                                press(m.k, m.c, m.i);
+                                const moves = [{k:'w',c:'KeyW',i:87}, {k:'a',c:'KeyA',i:65}, {k:'s',c:'KeyS',i:83}, {k:'d',c:'KeyD',i:68}];
+                                const m = moves[Math.floor(Math.random() * moves.length)];
+                                triggerKey(m.c, m.k, m.i);
                                 lastMove = Date.now();
                             }
 
-                            // Cleanup UI
-                            const adDiv = document.querySelector('#aipPrerollContainer, #preroll, .ad-overlay');
-                            if (adDiv) adDiv.style.visibility = 'hidden';
+                            // 2. Ad Trigger (U key) - Every 250ms (Safe speed)
+                            if (Date.now() - lastU > 250) {
+                                triggerKey('KeyU', 'u', 85);
+                                lastU = Date.now();
+                            }
+
+                            // 3. REAL Token Capture & Instant Complete
+                            const comp = findAdComponent();
+                            if (comp) {
+                                // Wait for the REAL token to arrive from the server
+                                const token = comp.token || comp.adToken || comp._token;
+                                const cid = window.taro?.network?._socket?.id || window.taro?.network?.socket?.id;
+
+                                if (token && cid && !processedTokens.has(token)) {
+                                    processedTokens.add(token);
+                                    console.log("⚡ Real token captured, completing ad:", token);
+
+                                    // Fire off all completion mechanisms using the valid token
+                                    if (typeof comp.prerollEventHandler === 'function') {
+                                        try { comp.prerollEventHandler("video-ad-completed", cid); } catch(e){}
+                                    }
+                                    if (typeof comp.onAdComplete === 'function') {
+                                        try { comp.onAdComplete({ token, clientId: cid, status: 'completed' }); } catch(e){}
+                                    }
+                                    if (typeof comp.complete === 'function') {
+                                        try { comp.complete(); } catch(e){}
+                                    }
+
+                                    // Direct Network Sync
+                                    try {
+                                        if (window.taro?.network?.send) {
+                                            window.taro.network.send('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
+                                        }
+                                    } catch(e){}
+                                    
+                                    // Nullify token so the game knows we finished it
+                                    comp.token = null;
+                                    if (comp.adToken) comp.adToken = null;
+                                    if (comp._token) comp._token = null;
+                                }
+                            }
+
+                            // 4. Hide Ads to prevent screen blocking
+                            const adEls = document.querySelectorAll('iframe, video, #aipPrerollContainer, #preroll, .ad-overlay, .aip-skip-button');
+                            adEls.forEach(el => el.style.display = 'none');
 
                             requestAnimationFrame(mainLoop);
                         }
 
-                        // Initialize once game is ready
-                        const check = setInterval(() => {
-                            const isReady = (window.taro && window.taro.isReady) || (window.game && document.body);
-                            if (isReady) {
-                                clearInterval(check);
+                        // Wait for game to initialize before starting
+                        const waitInit = setInterval(() => {
+                            if (window.taro && window.taro.isReady) {
+                                clearInterval(waitInit);
                                 requestAnimationFrame(mainLoop);
                             }
                         }, 1000);
 
-                        // Hijack AIP start
-                        const aipInterval = setInterval(() => {
-                            if (window.aiptag?.adplayer) {
-                                window.aiptag.adplayer.startPreRoll = () => {
-                                    window.completeAd();
-                                    return { destroy: () => {} };
-                                };
-                                clearInterval(aipInterval);
-                            }
-                        }, 500);
                     })();
                 });
             }
 
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 });
-            log(`Bot ${id} connected to ${url}`);
+            log(`Bot ${id} connected`);
 
-            // Active Joiner/Player
+            // Auto-Login Helper (Ensures bot enters the game map to press U)
             setInterval(async () => {
                 try {
                     await page.evaluate(() => {
+                        const targets = ['play', 'join', 'continue', 'confirm'];
                         const btns = Array.from(document.querySelectorAll('button, div, span'));
-                        const target = btns.find(b => {
-                            const t = b.innerText.toLowerCase();
-                            return t === 'play' || t === 'join' || t === 'continue' || t === 'skip' || t === 'play game';
-                        });
-                        if (target) target.click();
+                        const match = btns.find(b => targets.includes(b.innerText.toLowerCase().trim()));
+                        if (match) match.click();
                     });
                 } catch(e) {}
-            }, 3000);
+            }, 4000);
 
         } catch (e) { log(`Bot ${id} Error: ${e.message}`); }
     }
@@ -213,7 +206,7 @@ module.exports = async function main(deps) {
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-        await sendToWebhook(`🚀 Executor v${VERSION} Started (Reliable Ad Bypass)`);
+        await sendToWebhook(`🚀 Executor v${VERSION} Started (Real-Token Ad Bypass)`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const question = (q) => new Promise(res => rl.question(q, res));

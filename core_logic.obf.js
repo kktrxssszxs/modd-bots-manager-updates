@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.4.5";
+    const VERSION = "3.5.1";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -60,7 +60,9 @@ module.exports = async function main(deps) {
             '--disable-blink-features=AutomationControlled',
             '--disable-web-security',
             '--disable-features=IsolateOrigins,site-per-process',
-            '--autoplay-policy=no-user-gesture-required'
+            '--autoplay-policy=no-user-gesture-required',
+            '--disable-infobars',
+            '--window-size=1280,720'
         ];
         if (proxyPort) args.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
 
@@ -72,6 +74,7 @@ module.exports = async function main(deps) {
             await page.setViewport({ width: 1280, height: 720 });
             await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
 
+            // Inject logic BEFORE navigation starts
             if (isAutoAd) {
                 await page.evaluateOnNewDocument(() => {
                     (function() {
@@ -84,133 +87,100 @@ module.exports = async function main(deps) {
                                 () => window.taro?.game,
                                 () => window.taro?.game?.data,
                                 () => window.taro?.game?.currentPlayer,
-                                () => window.taro?.entities,
                                 () => window.game?.adComponent,
                                 () => window.game?.adManager,
-                                () => window.game?.ads,
-                                () => window.adManager,
-                                () => window.ads,
-                                () => window.adComponent,
                                 () => window.aiptag?.adplayer,
-                                () => window.aiptag?.adplayer?.component,
                                 () => window.aipPlayer,
                                 () => window.aipAdComponent
                             ];
-                            
                             for (let getter of locations) {
                                 try {
-                                    const result = getter();
-                                    if (result && (result.token || result.adToken || result._token || result.currentToken || 
-                                        result.prerollEventHandler || result.onAdComplete || result.complete)) {
-                                        return result;
-                                    }
+                                    const res = getter();
+                                    if (res && (res.token || res.adToken || res._token || res.prerollEventHandler)) return res;
                                 } catch(e) {}
                             }
                             return null;
                         }
 
                         function getClientId() {
-                            try { return window.taro?.network?._socket?.id || window.taro?.network?.socket?.id || window.game?.clientId || 'unknown-client'; } catch(e) { return 'unknown-client'; }
-                        }
-
-                        function getNetworkSend() {
-                            try { return window.taro?.network?.send || window.taro?.network?.socket?.emit || window.game?.network?.send; } catch(e) { return null; }
+                            try { return window.taro?.network?._socket?.id || window.taro?.network?.socket?.id || 'client-' + Math.random().toString(36).substr(2, 5); } catch(e) { return 'unknown'; }
                         }
 
                         function triggerKey(key, code, keyCode) {
-                            const downOpts = { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true };
-                            const upOpts = { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true };
-                            document.dispatchEvent(new KeyboardEvent('keydown', downOpts));
-                            window.dispatchEvent(new KeyboardEvent('keydown', downOpts));
+                            const opts = { key, code, keyCode, which: keyCode, bubbles: true };
+                            document.dispatchEvent(new KeyboardEvent('keydown', opts));
+                            window.dispatchEvent(new KeyboardEvent('keydown', opts));
                             setTimeout(() => {
-                                document.dispatchEvent(new KeyboardEvent('keyup', upOpts));
-                                window.dispatchEvent(new KeyboardEvent('keyup', upOpts));
-                            }, 20);
+                                document.dispatchEvent(new KeyboardEvent('keyup', opts));
+                                window.dispatchEvent(new KeyboardEvent('keyup', opts));
+                            }, 10);
                         }
 
                         function completeAd() {
                             const comp = findAdComponent();
                             if (!comp) return;
 
-                            const token = comp.token || comp.adToken || comp._token || comp.currentToken || comp.ad?.token || comp.data?.token;
+                            const token = comp.token || comp.adToken || comp._token || comp.currentToken;
                             if (!token || processedTokens.has(token)) return; 
 
                             processedTokens.add(token);
-                            const clientId = getClientId();
-                            const networkSend = getNetworkSend();
+                            const cid = getClientId();
                             
-                            // Method 1: prerollEventHandler (The main bypass)
-                            if (comp.prerollEventHandler) { try { comp.prerollEventHandler("video-ad-completed", clientId); } catch(e) {} }
-                            
-                            // Method 2: onAdComplete callback
-                            if (comp.onAdComplete) { try { comp.onAdComplete({ token, clientId, status: 'completed' }); } catch(e) {} }
-                            
-                            // Method 3: complete() call
-                            if (typeof comp.complete === 'function') { try { comp.complete(); } catch(e) {} }
-                            
-                            // Method 4: Close/Finish/Skip calls
-                            ['finish', 'close', 'skip', 'end', 'destroy'].forEach(m => {
-                                if (typeof comp[m] === 'function') { try { comp[m](); } catch(e) {} }
-                            });
-                            
-                            // Method 5: Aggressive Network Sync
-                            if (networkSend) {
-                                try {
-                                    networkSend('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId });
-                                    networkSend('adCompleted', { token, clientId, reward: true });
-                                } catch(e) {}
-                            }
-                            
-                            // Method 6: Event Dispatching
+                            // Aggressive Completion Methods
                             try {
-                                ['video-ad-completed', 'adCompleted', 'prerollComplete', 'aipAdComplete'].forEach(eventName => {
-                                    window.dispatchEvent(new CustomEvent(eventName, { detail: { token, clientId, forced: true, source: 'AIPInstantComplete' } }));
+                                if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", cid);
+                                if (comp.onAdComplete) comp.onAdComplete({ token, clientId: cid, status: 'completed' });
+                                if (typeof comp.complete === 'function') comp.complete();
+                                
+                                const net = window.taro?.network?.send || window.game?.network?.send;
+                                if (net) {
+                                    net('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
+                                    net('adCompleted', { token, clientId: cid, reward: true });
+                                }
+                                
+                                ['video-ad-completed', 'adCompleted', 'aipAdComplete'].forEach(ev => {
+                                    window.dispatchEvent(new CustomEvent(ev, { detail: { token, clientId: cid } }));
                                 });
                             } catch(e) {}
 
-                            // Reset component token to allow next ad trigger
                             comp.token = null;
-                            if (comp.adToken) comp.adToken = null;
-                            console.log("⚡ Ad Completed Instantly with Token:", token);
+                            console.log("⚡ BYPASSED AD:", token.toString().substring(0,10));
                         }
 
-                        // THE AGGRESSIVE LOOP (Spams U and completion checks)
-                        function fastLoop() {
+                        function aggressiveLoop() {
                             const now = Date.now();
-
-                            // 1. Movement Timer (1.5s - Prevents anti-cheat kick)
+                            // Move every 1.5s
                             if (now - lastMove > 1500) {
-                                const moves = [{k:'w',c:'KeyW',i:87}, {k:'a',c:'KeyA',i:65}, {k:'s',c:'KeyS',i:83}, {k:'d',c:'KeyD',i:68}];
-                                const m = moves[Math.floor(Math.random() * moves.length)];
-                                triggerKey(m.k, m.c, m.i);
+                                triggerKey('w', 'KeyW', 87);
                                 lastMove = now;
                             }
-
-                            // 2. High Frequency U Spam (50ms - 20 times per second)
-                            if (now - lastU > 50) {
+                            // SPAM U every 30ms (Faster)
+                            if (now - lastU > 30) {
                                 triggerKey('u', 'KeyU', 85);
                                 lastU = now;
                             }
-
-                            // 3. Instant Complete Check
+                            // Check for Ads
                             completeAd();
-
-                            // 4. UI Cleanup (Hide annoying iframes)
-                            const adEls = document.querySelectorAll('iframe, video, [class*="ad"], #aipPrerollContainer, #preroll');
-                            adEls.forEach(el => { if (el.style && el.style.display !== 'none') el.style.display = 'none'; });
-
-                            requestAnimationFrame(fastLoop);
+                            requestAnimationFrame(aggressiveLoop);
                         }
-
-                        requestAnimationFrame(fastLoop);
+                        aggressiveLoop();
                     })();
                 });
             }
 
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 });
-            log(`Bot ${id} connected`);
+            // Navigation with shorter timeout and looser "Ready" state
+            try {
+                await page.goto(url, { 
+                    waitUntil: 'domcontentloaded', // Don't wait for heavy images/trackers
+                    timeout: 45000 
+                });
+            } catch (navErr) {
+                log(`Bot ${id} Notice: Initial navigation timed out, but proceeding with loop.`);
+            }
 
-            // Play Button & Focus Helper
+            log(`Bot ${id} initialized.`);
+
+            // Persistent UI Clicker
             setInterval(async () => {
                 try {
                     await page.evaluate(() => {
@@ -218,18 +188,12 @@ module.exports = async function main(deps) {
                         const btns = Array.from(document.querySelectorAll('button, div, span'));
                         const match = btns.find(b => targets.includes(b.innerText.toLowerCase().trim()));
                         if (match) match.click();
-
-                        const canvas = document.querySelector('canvas');
-                        if (canvas) {
-                            canvas.click();
-                            canvas.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-                            canvas.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-                        }
+                        document.querySelector('canvas')?.click();
                     });
                 } catch(e) {}
-            }, 3000);
+            }, 5000);
 
-        } catch (e) { log(`Bot ${id} Error: ${e.message}`); }
+        } catch (e) { log(`Bot ${id} Critical Error: ${e.message}`); }
     }
 
     async function startTorInstances(count, startPort) {
@@ -239,7 +203,6 @@ module.exports = async function main(deps) {
             if (!fs.existsSync(torDataDir)) fs.mkdirSync(torDataDir, { recursive: true });
             const torProc = spawn('tor', ['--SocksPort', port.toString(), '--DataDirectory', torDataDir]);
             childProcesses.tor.push({ pid: torProc.pid, port });
-            log(`Tor started on port ${port}`);
             await new Promise(r => setTimeout(r, 1000));
         }
     }
@@ -247,7 +210,7 @@ module.exports = async function main(deps) {
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-        await sendToWebhook(`🚀 Executor v${VERSION} Started (Ultra-Fast Loop)`);
+        await sendToWebhook(`🚀 Executor v${VERSION} Ready (Bypass + Spam Mode)`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const question = (q) => new Promise(res => rl.question(q, res));
@@ -257,7 +220,6 @@ module.exports = async function main(deps) {
         const url = await question("Target URL: ");
         const modeInput = await question("Mode (1: Single, 2: Multi-NoProxy, 3: Multi-Proxy-AutoAd): ");
         const mode = parseInt(modeInput) || 1;
-
         const countInput = (mode === 1) ? "1" : await question("Initial Bot Count: ");
         let count = parseInt(countInput) || 1;
 
@@ -275,11 +237,6 @@ module.exports = async function main(deps) {
             if (!isNaN(add) && add > 0) {
                 const startIdx = count;
                 count += add;
-                if (mode === 3 && count > 5) {
-                    const currentTorCount = childProcesses.tor.length;
-                    const needed = (count - 5) - currentTorCount;
-                    if (needed > 0) await startTorInstances(needed, 9050 + currentTorCount);
-                }
                 for (let i = 0; i < add; i++) {
                     const idx = startIdx + i;
                     let pPort = (mode === 3 && idx >= 5) ? childProcesses.tor[(idx - 5) % childProcesses.tor.length].port : null;

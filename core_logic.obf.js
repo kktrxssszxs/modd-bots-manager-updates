@@ -3,9 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "4.0.4";
-    //mi bosmbo scalllltt I need placeholders myh vombo passat 2.8l v6 making 96hp what an absolute machine
-    // also I patched a syntax error which is super cool and im going to do a backflip
+    const VERSION = "4.0.6";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -360,16 +358,15 @@ module.exports = async function main(deps) {
             await page.setViewport({ width: 1280, height: 720 });
             await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
             
-            // Block unnecessary resources
+            // FIXED: Allow all resources through (don't block images/media)
+            // Remove the request interception entirely or just continue all
+            // If you want to keep it for debugging, do this:
+            /*
             await page.setRequestInterception(true);
             page.on('request', (req) => {
-                const type = req.resourceType();
-                if (type === 'font') {
-                    req.abort();
-                } else {
-                    req.continue();
-                }
+                req.continue();
             });
+            */
 
             // Console logging for debugging
             page.on('console', msg => {
@@ -390,7 +387,9 @@ module.exports = async function main(deps) {
             // Inject script AFTER page load
             if (isAutoAd) {
                 await page.evaluate(AUTO_AD_SCRIPT);
-                log(`Bot ${id}: Auto-ad script injected`);
+                log(`Bot ${id}: Auto-ad script injected (Mode 3 Active)`);
+            } else {
+                log(`Bot ${id}: Running without auto-ad (Mode 1/2)`);
             }
 
             // UI interaction loop
@@ -460,6 +459,10 @@ module.exports = async function main(deps) {
         const url = await question("Target URL: ");
         const modeInput = await question("Mode (1: Single, 2: Multi-NoProxy, 3: Multi-Proxy-AutoAd): ");
         const mode = parseInt(modeInput) || 1;
+        
+        // DEBUG: Log the selected mode
+        log(`Selected mode: ${mode} (isAutoAd: ${mode === 3})`);
+        
         const countInput = (mode === 1) ? "1" : await question("Initial Bot Count: ");
         let count = parseInt(countInput) || 1;
 
@@ -474,7 +477,7 @@ module.exports = async function main(deps) {
             await new Promise(r => setTimeout(r, 3000));
         }
 
-        log(`Launched ${count} bots`);
+        log(`Launched ${count} bots in mode ${mode}`);
 
         while (!shuttingDown) {
             const addStr = await question("Add more? (count/q): ");

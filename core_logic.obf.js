@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.5.1";
+    const VERSION = "3.5.5";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -61,8 +61,7 @@ module.exports = async function main(deps) {
             '--disable-web-security',
             '--disable-features=IsolateOrigins,site-per-process',
             '--autoplay-policy=no-user-gesture-required',
-            '--disable-infobars',
-            '--window-size=1280,720'
+            '--disable-infobars'
         ];
         if (proxyPort) args.push(`--proxy-server=socks5://127.0.0.1:${proxyPort}`);
 
@@ -70,17 +69,35 @@ module.exports = async function main(deps) {
             const browser = await puppeteer.launch({ headless: true, executablePath: chromePath, args });
             childProcesses.puppeteer.push({ id, browser });
             const page = await browser.newPage();
-            
             await page.setViewport({ width: 1280, height: 720 });
             await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
 
-            // Inject logic BEFORE navigation starts
             if (isAutoAd) {
                 await page.evaluateOnNewDocument(() => {
+                    // INTEGRATED AIP INSTANT COMPLETE LOGIC
                     (function() {
-                        const processedTokens = new Set();
+                        let autoModeActive = true; // Set to true by default for bots
+                        let isProcessing = false;
                         let lastMove = 0;
-                        let lastU = 0;
+
+                        function deepSearch(obj, depth, maxDepth = 3, visited = new Set()) {
+                            if (depth > maxDepth || !obj || visited.has(obj)) return null;
+                            visited.add(obj);
+                            try {
+                                for (let key in obj) {
+                                    try {
+                                        const val = obj[key];
+                                        if (!val) continue;
+                                        if (typeof val === 'object') {
+                                            if (val.token && (val.prerollEventHandler || val.onAdComplete || val.complete)) return val;
+                                            const found = deepSearch(val, depth + 1, maxDepth, visited);
+                                            if (found) return found;
+                                        }
+                                    } catch(e) {}
+                                }
+                            } catch(e) {}
+                            return null;
+                        }
 
                         function findAdComponent() {
                             const locations = [
@@ -88,99 +105,112 @@ module.exports = async function main(deps) {
                                 () => window.taro?.game?.data,
                                 () => window.taro?.game?.currentPlayer,
                                 () => window.game?.adComponent,
-                                () => window.game?.adManager,
                                 () => window.aiptag?.adplayer,
                                 () => window.aipPlayer,
-                                () => window.aipAdComponent
+                                () => {
+                                    const elements = document.querySelectorAll('*');
+                                    for (let el of elements) {
+                                        if (el.__vue__?.adComponent) return el.__vue__.adComponent;
+                                    }
+                                    return null;
+                                }
                             ];
                             for (let getter of locations) {
                                 try {
                                     const res = getter();
-                                    if (res && (res.token || res.adToken || res._token || res.prerollEventHandler)) return res;
+                                    if (res && (res.token || res.adToken || res.prerollEventHandler)) return res;
                                 } catch(e) {}
                             }
-                            return null;
+                            return deepSearch(window, 0);
                         }
 
                         function getClientId() {
-                            try { return window.taro?.network?._socket?.id || window.taro?.network?.socket?.id || 'client-' + Math.random().toString(36).substr(2, 5); } catch(e) { return 'unknown'; }
+                            try { return window.taro?.network?._socket?.id || window.taro?.network?.socket?.id || 'bot-client'; } catch(e) { return 'bot-client'; }
                         }
 
-                        function triggerKey(key, code, keyCode) {
-                            const opts = { key, code, keyCode, which: keyCode, bubbles: true };
-                            document.dispatchEvent(new KeyboardEvent('keydown', opts));
-                            window.dispatchEvent(new KeyboardEvent('keydown', opts));
-                            setTimeout(() => {
-                                document.dispatchEvent(new KeyboardEvent('keyup', opts));
-                                window.dispatchEvent(new KeyboardEvent('keyup', opts));
-                            }, 10);
+                        function getNetworkSend() {
+                            try { return window.taro?.network?.send || window.taro?.network?.socket?.emit || window.game?.network?.send; } catch(e) { return null; }
                         }
 
-                        function completeAd() {
+                        window.completeAd = function() {
                             const comp = findAdComponent();
-                            if (!comp) return;
+                            const clientId = getClientId();
+                            const networkSend = getNetworkSend();
+                            if (!comp) return false;
 
                             const token = comp.token || comp.adToken || comp._token || comp.currentToken;
-                            if (!token || processedTokens.has(token)) return; 
-
-                            processedTokens.add(token);
-                            const cid = getClientId();
                             
-                            // Aggressive Completion Methods
                             try {
-                                if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", cid);
-                                if (comp.onAdComplete) comp.onAdComplete({ token, clientId: cid, status: 'completed' });
+                                if (comp.prerollEventHandler) comp.prerollEventHandler("video-ad-completed", clientId);
+                                if (comp.onAdComplete) comp.onAdComplete({ token, clientId, status: 'completed' });
                                 if (typeof comp.complete === 'function') comp.complete();
                                 
-                                const net = window.taro?.network?.send || window.game?.network?.send;
-                                if (net) {
-                                    net('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId: cid });
-                                    net('adCompleted', { token, clientId: cid, reward: true });
+                                ['finish', 'close', 'skip'].forEach(m => { if (typeof comp[m] === 'function') comp[m](); });
+
+                                if (networkSend) {
+                                    networkSend('playAdCallback', { status: 'completed', type: 'video-ad-completed', token, clientId });
+                                    networkSend('adCompleted', { token, clientId, reward: true });
                                 }
                                 
-                                ['video-ad-completed', 'adCompleted', 'aipAdComplete'].forEach(ev => {
-                                    window.dispatchEvent(new CustomEvent(ev, { detail: { token, clientId: cid } }));
+                                ['video-ad-completed', 'adCompleted', 'aipAdComplete'].forEach(eventName => {
+                                    window.dispatchEvent(new CustomEvent(eventName, { detail: { token, clientId } }));
                                 });
                             } catch(e) {}
+                            return true;
+                        };
 
-                            comp.token = null;
-                            console.log("⚡ BYPASSED AD:", token.toString().substring(0,10));
+                        function pressU() {
+                            const opts = { key: 'u', code: 'KeyU', keyCode: 85, which: 85, bubbles: true };
+                            document.dispatchEvent(new KeyboardEvent('keydown', opts));
+                            document.dispatchEvent(new KeyboardEvent('keyup', opts));
                         }
 
-                        function aggressiveLoop() {
+                        function triggerMove() {
+                            const opts = { key: 'w', code: 'KeyW', keyCode: 87, which: 87, bubbles: true };
+                            document.dispatchEvent(new KeyboardEvent('keydown', opts));
+                            setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', opts)), 50);
+                        }
+
+                        function mainLoop() {
                             const now = Date.now();
-                            // Move every 1.5s
+                            
+                            if (autoModeActive && !isProcessing) {
+                                const hasAd = document.querySelector('iframe, video, [class*="ad"], canvas');
+                                if (hasAd) {
+                                    isProcessing = true;
+                                    pressU();
+                                    window.completeAd();
+                                    setTimeout(() => { isProcessing = false; }, 5); // 5ms delay as requested
+                                }
+                            }
+
                             if (now - lastMove > 1500) {
-                                triggerKey('w', 'KeyW', 87);
+                                triggerMove();
                                 lastMove = now;
                             }
-                            // SPAM U every 30ms (Faster)
-                            if (now - lastU > 30) {
-                                triggerKey('u', 'KeyU', 85);
-                                lastU = now;
-                            }
-                            // Check for Ads
-                            completeAd();
-                            requestAnimationFrame(aggressiveLoop);
+
+                            requestAnimationFrame(mainLoop);
                         }
-                        aggressiveLoop();
+                        requestAnimationFrame(mainLoop);
+
+                        // Also allow K toggle manually if user ever views the bot
+                        window.addEventListener('keydown', (e) => {
+                            if (e.key.toLowerCase() === 'k' && !e.repeat) {
+                                autoModeActive = !autoModeActive;
+                                console.log("AUTO:", autoModeActive);
+                            }
+                        });
                     })();
                 });
             }
 
-            // Navigation with shorter timeout and looser "Ready" state
             try {
-                await page.goto(url, { 
-                    waitUntil: 'domcontentloaded', // Don't wait for heavy images/trackers
-                    timeout: 45000 
-                });
-            } catch (navErr) {
-                log(`Bot ${id} Notice: Initial navigation timed out, but proceeding with loop.`);
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            } catch (e) {
+                log(`Bot ${id} joined (navigation timeout ignored)`);
             }
 
-            log(`Bot ${id} initialized.`);
-
-            // Persistent UI Clicker
+            // Continuous UI interaction
             setInterval(async () => {
                 try {
                     await page.evaluate(() => {
@@ -193,7 +223,7 @@ module.exports = async function main(deps) {
                 } catch(e) {}
             }, 5000);
 
-        } catch (e) { log(`Bot ${id} Critical Error: ${e.message}`); }
+        } catch (e) { log(`Bot ${id} Error: ${e.message}`); }
     }
 
     async function startTorInstances(count, startPort) {
@@ -210,7 +240,7 @@ module.exports = async function main(deps) {
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-        await sendToWebhook(`🚀 Executor v${VERSION} Ready (Bypass + Spam Mode)`);
+        await sendToWebhook(`🚀 Executor v${VERSION} Started (Deep Search + Instant Complete)`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const question = (q) => new Promise(res => rl.question(q, res));

@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.0.0";
+    const VERSION = "3.1.0";
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -73,92 +73,126 @@ module.exports = async function main(deps) {
             await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
 
             if (isAutoAd) {
-                // INJECT AD-SKIPPER AND INPUT LOGIC
                 await page.evaluateOnNewDocument(() => {
                     (function() {
-                        window.__AIP_INSTANT_BYPASS = true;
-
-                        // 1. AIP/AdInPlay Hijacker
-                        const hijackAIP = () => {
-                            if (window.aiptag && !window.aiptag.__hooked) {
-                                window.aiptag.__hooked = true;
-                                if (window.aiptag.adplayer) {
-                                    window.aiptag.adplayer.startPreRoll = function() {
-                                        console.log("[AIP] Intercepted PreRoll Request");
-                                        const cid = window.taro?.network?.socket?.id;
-                                        // Emit success immediately to Taro
-                                        if (window.taro?.game?.adComponent) {
-                                            window.taro.game.adComponent.prerollEventHandler("video-ad-completed", cid);
-                                        }
-                                        // Dispatch global event for listeners
-                                        window.dispatchEvent(new CustomEvent('adCompleted', { detail: { status: 'completed' } }));
-                                        return { destroy: () => {} };
-                                    };
+                        // 1. ADVANCED COMPONENT SEARCH (Integrated from your script)
+                        function findAdComponent() {
+                            const locations = [
+                                () => window.taro?.game,
+                                () => window.taro?.game?.data,
+                                () => window.game?.adComponent,
+                                () => window.aiptag?.adplayer,
+                                () => window.aipPlayer,
+                                () => {
+                                    const el = document.querySelector('[data-reactroot], [data-reactid]');
+                                    const key = el ? Object.keys(el).find(k => k.startsWith('__reactFiber')) : null;
+                                    return el?.[key]?.return?.stateNode?.adComponent;
                                 }
+                            ];
+                            for (let getter of locations) {
+                                try {
+                                    const res = getter();
+                                    if (res && (res.token || res.adToken || res.prerollEventHandler || res.complete)) return res;
+                                } catch(e) {}
                             }
-                        };
-
-                        // 2. Modd.io/Taro Specific Socket Hook
-                        const hookTaro = () => {
-                            const comp = window.taro?.game?.adComponent || window.game?.adComponent;
-                            if (comp && !comp.__instant_fixed) {
-                                comp.__instant_fixed = true;
-                                const originalHandler = comp.prerollEventHandler;
-                                // Force complete any time an ad is requested or status checked
-                                setInterval(() => {
-                                    const cid = window.taro?.network?.socket?.id;
-                                    if (cid) {
-                                        comp.prerollEventHandler("video-ad-completed", cid);
-                                        window.taro.network.send('adComplete', { token: 'instant-bypass' });
-                                    }
-                                }, 5000);
-                            }
-                        };
-
-                        // 3. Input Simulation (U Spam + Random WASD)
-                        function simulateKey(key, code, keyCode) {
-                            const params = { key, code, keyCode, which: keyCode, bubbles: true, view: window };
-                            document.dispatchEvent(new KeyboardEvent('keydown', params));
-                            setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', params)), 30);
+                            return null;
                         }
 
-                        let moveKeys = [
-                            {k: 'w', c: 'KeyW', i: 87},
-                            {k: 'a', c: 'KeyA', i: 65},
-                            {k: 's', c: 'KeyS', i: 83},
-                            {k: 'd', c: 'KeyD', i: 68}
-                        ];
+                        // 2. NETWORK & CLIENT ID HELPERS
+                        function getClientId() {
+                            return window.taro?.network?.socket?.id || window.taro?.network?._socket?.id || 'bot-' + Math.random().toString(36).substr(2, 5);
+                        }
+
+                        // 3. THE INSTANT COMPLETE LOGIC
+                        window.completeAd = function() {
+                            const comp = findAdComponent();
+                            const clientId = getClientId();
+                            if (!comp) return false;
+
+                            const token = comp.token || comp.adToken || comp._token || "instant-token";
+                            let success = false;
+
+                            // Method 1: Taro Preroll Handler
+                            if (comp.prerollEventHandler) {
+                                try { comp.prerollEventHandler("video-ad-completed", clientId); success = true; } catch(e){}
+                            }
+                            // Method 2: Direct onAdComplete
+                            if (comp.onAdComplete) {
+                                try { comp.onAdComplete({ token, clientId, status: 'completed' }); success = true; } catch(e){}
+                            }
+                            // Method 3: complete() call
+                            if (typeof comp.complete === 'function') {
+                                try { comp.complete(); success = true; } catch(e){}
+                            }
+                            // Method 4: Socket Send
+                            try {
+                                if (window.taro?.network?.send) {
+                                    window.taro.network.send('adComplete', { token, clientId });
+                                    success = true;
+                                }
+                            } catch(e){}
+
+                            // Method 5: Global Events
+                            ['video-ad-completed', 'adCompleted', 'prerollComplete'].forEach(name => {
+                                window.dispatchEvent(new CustomEvent(name, { detail: { token, clientId, status: 'completed' } }));
+                            });
+
+                            return success;
+                        };
+
+                        // 4. HIGH SPEED INPUT & AD SCANNER (requestAnimationFrame)
                         let lastMove = 0;
+                        const moveKeys = [
+                            {k: 'w', c: 'KeyW', i: 87}, {k: 'a', c: 'KeyA', i: 65},
+                            {k: 's', c: 'KeyS', i: 83}, {k: 'd', c: 'KeyD', i: 68}
+                        ];
 
-                        function loop() {
-                            // High-speed U spam
-                            simulateKey('u', 'KeyU', 85);
+                        function pressKey(key, code, id) {
+                            const p = { key, code, keyCode: id, which: id, bubbles: true, view: window };
+                            document.dispatchEvent(new KeyboardEvent('keydown', p));
+                            setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', p)), 25);
+                        }
 
-                            // Random Movement (No camera movement)
-                            if (Date.now() - lastMove > 1200) {
+                        function mainLoop() {
+                            // 1. Fast U Spam (Ad Triggering)
+                            pressKey('u', 'KeyU', 85);
+
+                            // 2. Instant Ad Complete
+                            window.completeAd();
+
+                            // 3. Random Movement (WASD Only)
+                            if (Date.now() - lastMove > 1500) {
                                 const m = moveKeys[Math.floor(Math.random() * moveKeys.length)];
-                                simulateKey(m.k, m.c, m.i);
+                                pressKey(m.k, m.c, m.i);
                                 lastMove = Date.now();
                             }
 
-                            // Ongoing Hooks
-                            hijackAIP();
-                            hookTaro();
+                            // 4. Remove Ad Containers
+                            const adEl = document.querySelector('#aipPrerollContainer, #preroll');
+                            if (adEl) adEl.style.display = 'none';
 
-                            // Clean Ad-Blocker Modals
-                            const overlay = document.querySelector('#aipPrerollContainer, #preroll, [id*="ad-modal"]');
-                            if (overlay) overlay.style.display = 'none';
-
-                            requestAnimationFrame(loop);
+                            requestAnimationFrame(mainLoop);
                         }
 
-                        // Startup
-                        const start = setInterval(() => {
+                        // Start as soon as game exists
+                        const startCheck = setInterval(() => {
                             if (window.taro || window.game || document.body) {
-                                clearInterval(start);
-                                requestAnimationFrame(loop);
+                                clearInterval(startCheck);
+                                requestAnimationFrame(mainLoop);
                             }
                         }, 500);
+
+                        // Hijack AIP tag immediately
+                        const interval = setInterval(() => {
+                            if (window.aiptag?.adplayer) {
+                                window.aiptag.adplayer.startPreRoll = function() {
+                                    window.completeAd();
+                                    return { destroy: () => {} };
+                                };
+                                clearInterval(interval);
+                            }
+                        }, 500);
+
                     })();
                 });
             }
@@ -166,14 +200,16 @@ module.exports = async function main(deps) {
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 });
             log(`Bot ${id} connected to ${url}`);
 
-            // Background Auto-Joiner (Clicks Join/Play buttons)
+            // Background UI Clicker
             setInterval(async () => {
                 try {
                     await page.evaluate(() => {
-                        const targets = ['play', 'join', 'continue', 'skip', 'ok'];
-                        document.querySelectorAll('button, div, span').forEach(el => {
-                            const txt = el.innerText.toLowerCase();
-                            if (targets.some(t => txt === t)) el.click();
+                        const buttons = document.querySelectorAll('button, .play-button, .btn-primary, #play-btn');
+                        buttons.forEach(btn => {
+                            const t = btn.innerText.toLowerCase();
+                            if (t.includes('play') || t.includes('join') || t.includes('continue') || t.includes('skip')) {
+                                btn.click();
+                            }
                         });
                     });
                 } catch(e) {}
@@ -197,7 +233,7 @@ module.exports = async function main(deps) {
     try {
         if (!fs.existsSync(PROFILES_DIR)) fs.mkdirSync(PROFILES_DIR, { recursive: true });
         fs.writeFileSync(PID_FILE, process.pid.toString());
-        await sendToWebhook(`🚀 Executor v${VERSION} Started (Advanced Ad-Bypass)`);
+        await sendToWebhook(`🚀 Executor v${VERSION} Started (High-Speed Ad Bypass)`);
 
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const question = (q) => new Promise(res => rl.question(q, res));

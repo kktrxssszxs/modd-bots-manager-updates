@@ -3,7 +3,7 @@ module.exports = async function main(deps) {
 
     try { require('events').EventEmitter.defaultMaxListeners = 0; process.setMaxListeners(0); } catch { }
 
-    const VERSION = "3.6.0"; 
+    const VERSION = "3.6.1"; 
     const BASE_DIR = process.pkg ? path.dirname(process.execPath) : process.cwd();
     const PROFILES_DIR = path.resolve(BASE_DIR, "bot_profiles");
     const PID_FILE = path.join(BASE_DIR, "main.pid");
@@ -256,7 +256,7 @@ module.exports = async function main(deps) {
             await page.setRequestInterception(true);
             page.on('request', (req) => {
                 const type = req.resourceType();
-                if (type === 'image' || type === 'font' || type === 'media') {
+                if (type === 'font') {
                     req.abort();
                 } else {
                     req.continue();
